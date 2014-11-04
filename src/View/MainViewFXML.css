@@ -1,0 +1,18 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : Nov 3, 2014, 2:54:17 PM
+    Author     : root
+*/
+
+.chart-series-line{
+    -fx-stroke-width: 1px;
+    -fx-effect: null;
+}
+
+.chart-legend-item-symbol{
+   -fx-shape: "M5,0 L10,8 L0,8 Z"
+}
