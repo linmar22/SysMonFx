@@ -38,6 +38,9 @@ import javafx.util.Callback;
 public class MainViewFXMLController implements Initializable {
 
     SysUtil sysUtil;
+    long lastLabelUpdate = 0;
+    long lastCycleInterval = 0;
+    int cycle = 0;
 
     static ObservableList<Target> targets = FXCollections.observableArrayList();
 
@@ -73,6 +76,23 @@ public class MainViewFXMLController implements Initializable {
     @FXML
     private Label totalspace_label;
 
+    @FXML
+    private Label targets_infoLabel;
+    @FXML
+    private Label active_infoLabel;
+    @FXML
+    private Label timedout_infoLabel;
+    @FXML
+    private Label unreachable_infoLabel;
+    @FXML
+    private Label unknownhosts_infoLabel;
+    @FXML
+    private Label lastupdate_infoLabel;
+    
+    @FXML private LineChart<Number,Number> cycleChart;
+    @FXML private NumberAxis secondAxis;
+    XYChart.Series cycleSeries;
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         sysUtil = new SysUtil();
@@ -80,6 +100,9 @@ public class MainViewFXMLController implements Initializable {
         initTable();
         initChart();
         initCPUgraph();
+        initCycleChart();
+        setLastLabelUpdate();
+        startLabelUpdateCounter();
         beginPing();
     }
 
@@ -134,7 +157,7 @@ public class MainViewFXMLController implements Initializable {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                int i = 0;
+                
                 while (true) {
                     for (Target t : targets) {
                         for (XYChart.Series s : lineChart.getData()) {
@@ -145,8 +168,7 @@ public class MainViewFXMLController implements Initializable {
                                     switch (ping) {
 
                                         case "TIME_OUT":
-                                            addToChart(s, i, 00.00);
-                                            //s.getData().add(new XYChart.Data(i, 0));
+                                            addToChart(s, cycle, 00.00);
                                             t.setStatus("TIME OUT");
                                             t.setLastrtt("TIME_OUT");
                                             t.setTimeouts(t.timeoutsProperty().get() + 1);
@@ -162,21 +184,18 @@ public class MainViewFXMLController implements Initializable {
                                         default:
                                             t.setLastrtt(ping);
                                             t.setStatus("ACTIVE");
-                                            addToChart(s, i, Double.valueOf(ping));
-                                            //s.getData().add(new XYChart.Data(i, Double.valueOf(ping)));
+                                            addToChart(s, cycle, Double.valueOf(ping));
                                             break;
                                     }
-//                                    t.setLastrtt(ping);
-//                                    t.setStatus("ACTIVE");
-//                                    s.getData().add(new XYChart.Data(i, Double.valueOf(ping)));
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }
                     }
-                    i++;
-                    rangeChart(i);
+                    cycle++;
+                    rangeChart(cycle);
+                    updateInfo();
                 }
             }
         }).start();
@@ -185,12 +204,22 @@ public class MainViewFXMLController implements Initializable {
     public void initChart() {
         lineChart.setCreateSymbols(false);
         timeAxis.setLowerBound(00.00);
-        timeAxis.setUpperBound((double) 100.00);
+        timeAxis.setUpperBound(100.00);
         for (Target t : targets) {
             series = new XYChart.Series();
             series.setName(t.nameProperty().get());
             lineChart.getData().add(series);
         }
+    }
+    
+    public void initCycleChart(){
+        cycleChart.setCreateSymbols(false);
+        cycleChart.setLegendVisible(false);
+        secondAxis.setLowerBound(00.00);
+        secondAxis.setUpperBound(50.00);
+        cycleSeries = new XYChart.Series();
+        cycleSeries.setName("Interval");
+        cycleChart.getData().add(cycleSeries);
     }
 
     public void rangeChart(int i) {
@@ -267,9 +296,12 @@ public class MainViewFXMLController implements Initializable {
     }
 
     public synchronized void addToChart(XYChart.Series s, int pos, Double value) {
-        new Thread(() -> {
-            s.getData().add(new XYChart.Data(pos, value));
-        }).start();
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                s.getData().add(new XYChart.Data(pos, value));
+            }
+        });
     }
 
     public void initCPUgraph() {
@@ -305,8 +337,7 @@ public class MainViewFXMLController implements Initializable {
         storage_chart.setData(pieChartData);
         pcd1.getNode().setStyle("-fx-pie-color: #006BB2;");
         pcd2.getNode().setStyle("-fx-pie-color: #0099FF;");
-        
-        
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -348,7 +379,6 @@ public class MainViewFXMLController implements Initializable {
                                 }
                                 break;
                         }
-
                     }
                     for (PieChart.Data d : storage_chart.getData()) {
                         String forSwitch = d.getName().substring(0, 4);
@@ -392,6 +422,62 @@ public class MainViewFXMLController implements Initializable {
                 d.setName(s);
             }
         });
+    }
 
+    public void updateInfo() {
+        int total = targets.size();
+        int timeouts = 0;
+        int unreachable = 0;
+        int unknown = 0;
+        int active = 0;
+
+        for (Target t : targets) {
+            switch (t.lastrttProperty().get()) {
+                case "TIME_OUT":
+                    timeouts++;
+                    break;
+                case "UNREACHABLE HOST":
+                    unreachable++;
+                    break;
+                case "UNKNOWN HOST":
+                    unknown++;
+                    break;
+                default:
+                    active++;
+                    break;
+            }
+        }
+        updateLabel(targets_infoLabel, String.valueOf(total));
+        updateLabel(active_infoLabel, String.valueOf(active));
+        updateLabel(timedout_infoLabel, String.valueOf(timeouts));
+        updateLabel(unreachable_infoLabel, String.valueOf(unreachable));
+        updateLabel(unknownhosts_infoLabel, String.valueOf(unknown));
+        lastCycleInterval = (System.currentTimeMillis()-lastLabelUpdate)/1000;
+        updateLabel(lastupdate_infoLabel, String.valueOf(lastCycleInterval+"s"));
+        setLastLabelUpdate();
+    }
+
+    public void startLabelUpdateCounter() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        if(cycle+5>secondAxis.getUpperBound()){
+                            secondAxis.setUpperBound(cycle+5);
+                            secondAxis.setLowerBound(cycle-50);
+                        }
+                        addToChart(cycleSeries, cycle, Double.valueOf(lastCycleInterval));
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    public void setLastLabelUpdate() {
+        lastLabelUpdate = System.currentTimeMillis();
     }
 }
