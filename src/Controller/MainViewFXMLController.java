@@ -128,28 +128,14 @@ public class MainViewFXMLController implements Initializable {
         Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0);
         Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0);
         Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0);
+        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5",null,0);
+        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8",null,0);
+        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4",null,0);
+        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk",null, null,0);
 
-        targets.add(t1);
-        targets.add(t2);
-        targets.add(t3);
-        targets.add(t4);
-        targets.add(t5);
-        targets.add(t6);
-        targets.add(t7);
-        targets.add(t8);
-        targets.add(t9);
-        targets.add(t0);
-        targets.add(t10);
-        targets.add(t11);
-        targets.add(t12);
-        targets.add(t13);
-        targets.add(t14);
-        targets.add(t15);
-        targets.add(t16);
-        targets.add(t17);
-        targets.add(t18);
-        targets.add(t19);
-        targets.add(t20);
+        targets.add(t1);targets.add(t2);targets.add(t3);targets.add(t4);targets.add(t5);targets.add(t6);targets.add(t7);targets.add(t8);targets.add(t9);
+        targets.add(t0);targets.add(t10);targets.add(t11);targets.add(t12);targets.add(t13);targets.add(t14);targets.add(t15);targets.add(t16);
+        targets.add(t17);targets.add(t18);targets.add(t19);targets.add(t20);targets.add(t21);targets.add(t22);targets.add(t23);targets.add(t24);
 
     }
 
@@ -161,12 +147,13 @@ public class MainViewFXMLController implements Initializable {
                 while (true) {
                     for (Target t : targets) {
                         for (XYChart.Series s : lineChart.getData()) {
+                            String ping = null;
                             try {
+                                
                                 if (s.getName().equals(t.nameProperty().get())) {
                                     Callable c = new Pinger(t);
-                                    String ping = c.call().toString();
+                                    ping = c.call().toString();
                                     switch (ping) {
-
                                         case "TIME_OUT":
                                             addToChart(s, cycle, 00.00);
                                             t.setStatus("TIME OUT");
@@ -189,6 +176,7 @@ public class MainViewFXMLController implements Initializable {
                                     }
                                 }
                             } catch (Exception e) {
+                                System.out.println(ping);
                                 e.printStackTrace();
                             }
                         }
@@ -287,7 +275,6 @@ public class MainViewFXMLController implements Initializable {
                             }
                             this.setStyle("-fx-background-color:" + color);
                             setText(item);
-
                         }
                     }
                 };

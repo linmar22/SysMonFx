@@ -29,16 +29,15 @@ public class Pinger implements Callable {
             if (getOS().contains("LINUX")) {
                 return pingLinux(target.domainProperty().get());
             } else {
-
+                return pingWindows(target.domainProperty().get());
             }
         }else{
             if (getOS().contains("LINUX")) {
                 return pingLinux(target.addressProperty().get());
             } else {
-
+                return pingWindows(target.addressProperty().get());
             }
         }
-        return null;
     }
 
     public String pingLinux(String host) {
@@ -78,6 +77,41 @@ public class Pinger implements Callable {
             return output;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
+            return null;
+        }
+    }
+    
+    public String pingWindows(String host){
+        try {
+            
+            ProcessBuilder b = new ProcessBuilder("ping","-w","2000", "-n", "1", host);
+            Process p = b.start();
+            p.waitFor();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            
+            String line = "";
+            String output = "";
+
+            while ((line = br.readLine()) != null) {
+                output = line+'\n';
+                if (output.contains("Average")){
+                    output = output.split(",")[2].split(" = ")[1].split("ms")[0];
+                }
+                if (output.contains("100% loss")){
+                    output = "TIME_OUT";
+                }
+                if (output.contains("could not find host")){
+                    output = "UNKNOWN_HOST";
+                }
+                if (output.contains("unreachable")){
+                    output = "UNREACHABLE";
+                }
+            }
+            return output;
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            
             return null;
         }
     }
