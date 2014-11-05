@@ -5,20 +5,13 @@
  */
 package servmonfx;
 
-import Model.Target;
 import java.lang.reflect.Field;
 import javafx.application.Application;
 import static javafx.application.Application.launch;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
-import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.chart.LineChart;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -36,6 +29,8 @@ public class ServMonFx extends Application {
 
         stage.setScene(scene);
         stage.show();
+        stage.setMinHeight(600);
+        stage.setMinWidth(800);
         stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent event) {

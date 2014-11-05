@@ -6,16 +6,14 @@
  */
 package Controller;
 
-import Model.SysProp;
 import Model.Target;
 import Util.Pinger;
 import Util.SysUtil;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -24,37 +22,29 @@ import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.util.Callback;
-import javax.management.Attribute;
-import javax.management.AttributeList;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-import javax.management.ReflectionException;
 
 /**
  *
  * @author root
  */
 public class MainViewFXMLController implements Initializable {
-    
+
     SysUtil sysUtil;
 
     static ObservableList<Target> targets = FXCollections.observableArrayList();
-    static ObservableList<SysProp> systemProperties = FXCollections.observableArrayList();
 
     @FXML
     private LineChart<Number, Number> lineChart;
     @FXML
     private NumberAxis timeAxis;
-    @FXML
-    private NumberAxis pingAxis;
     XYChart.Series series;
 
     @FXML
@@ -65,6 +55,23 @@ public class MainViewFXMLController implements Initializable {
     @FXML
     private CategoryAxis categoryAxis;
     XYChart.Series cpuSeries;
+
+    @FXML
+    private PieChart storage_chart;
+    XYChart.Series storageSeries;
+
+    @FXML
+    private Label cpu_label;
+    @FXML
+    private Label ram_label;
+    @FXML
+    private Label net_label;
+    @FXML
+    private Label freespace_label;
+    @FXML
+    private Label usedspace_label;
+    @FXML
+    private Label totalspace_label;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -266,73 +273,102 @@ public class MainViewFXMLController implements Initializable {
     }
 
     public void initCPUgraph() {
-        final String cpu = "CPU";
-        final String ram = "RAM";
-        final String net = "Network";
-
         cpu_graph.setCategoryGap(10);
 
-        systemProperties.add(new SysProp(cpu, 38.35));
-        systemProperties.add(new SysProp(ram, 70.68));
-        systemProperties.add(new SysProp(net, 20.35));
-        
         cpuSeries = new XYChart.Series();
-        
         cpu_graph.getData().add(cpuSeries);
+
         cpu_graph.setLegendVisible(false);
         ArrayList<XYChart.Data> data = new ArrayList();
-        
-        
-        for (SysProp s : systemProperties) {
-            XYChart.Data dataObj = new XYChart.Data<>(s.getType(), s.getCpuusage());
-            data.add(dataObj);
-            cpuSeries.getData().add(dataObj);
-        }
-        
+
+        XYChart.Data dataObj0 = new XYChart.Data<>("CPU", 00.00);
+        XYChart.Data dataObj1 = new XYChart.Data<>("RAM", 00.00);
+        XYChart.Data dataObj2 = new XYChart.Data<>("NET", 00.00);
+
+        data.add(dataObj0);
+        data.add(dataObj1);
+        data.add(dataObj2);
+        cpuSeries.getData().addAll(data);
+        dataObj0.getNode().setStyle("-fx-bar-fill: #006BB2;");
+        dataObj1.getNode().setStyle("-fx-bar-fill: #0099FF;");
+        dataObj2.getNode().setStyle("-fx-bar-fill: #66C2FF;");
         sysUtil.setMaxTraffic(100);
+
+        storage_chart.setTitle("Space");
+        storage_chart.setLegendVisible(false);
+
+        PieChart.Data pcd1 = new PieChart.Data("Used", sysUtil.getUsedSpacePercentLinux() * 100);
+        PieChart.Data pcd2 = new PieChart.Data("Free", 100 - sysUtil.getUsedSpacePercentLinux() * 100);
+
+        ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(pcd1, pcd2);
+
+        storage_chart.setData(pieChartData);
+        pcd1.getNode().setStyle("-fx-pie-color: #006BB2;");
+        pcd2.getNode().setStyle("-fx-pie-color: #0099FF;");
+        
         
         new Thread(new Runnable() {
             @Override
             public void run() {
+                long totalspace = sysUtil.getTotalSpaceKbLinux();
+                String totalString = String.valueOf(totalspace / 1024) + " Mb" + " (" + (totalspace / 1024 / 1024) + " Gb)";
+                updateLabel(totalspace_label, totalString);
                 while (true) {
                     for (XYChart.Data dataObj : data) {
-                        for (SysProp s : systemProperties) {
-                            switch (dataObj.getXValue().toString()){
-                                case "CPU":
-                                    Double dub1 = sysUtil.getCPULoad();
+                        switch (dataObj.getXValue().toString()) {
+                            case "CPU":
+                                Double dub1 = sysUtil.getCPULoad();
                                 if (dub1 != null) {
-                                    System.out.println(dataObj.getXValue()+":"+dub1);
                                     dataObj.setYValue(dub1);
-                                    try{
-                                    Thread.sleep(1000);
-                                    }catch(InterruptedException e){
+                                    updateLabel(cpu_label, String.valueOf(dub1) + "%");
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
                                         e.printStackTrace();
                                     }
                                 }
-                                    break;
-                                case "RAM":
-                                    Double dub2 = sysUtil.getMemoryUsage();
-                                    if(dub2!=null) {
-                                        System.out.println(dataObj.getXValue()+":"+dub2);
-                                        dataObj.setYValue(dub2);
-                                    }
-                                    break;
-                                case "Network":
-                                    Double dub3 = sysUtil.getMemoryUsage();
-                                    if(dub3>sysUtil.getMaxTraffic()){
-                                        sysUtil.setMaxTraffic(dub3.intValue()+100);
-                                    }
-                                    if(dub3!=null){
-                                        System.out.println(dataObj.getXValue()+":"+dub3+"/"+sysUtil.getMaxTraffic());
-                                        dataObj.setYValue(dub3);
-                                    }
-                                    break;
-                            }
-                            
-                            if (dataObj.getXValue().toString().equals("CPU")) {
-                                //Double dub = getProcessCpuLoad();
-                                
-                            }
+                                break;
+                            case "RAM":
+                                Double dub2 = sysUtil.getMemoryUsage();
+                                dub2 = (double) Math.round(dub2 * 100) / 100;
+                                if (dub2 != null) {
+                                    dataObj.setYValue(dub2);
+                                    updateLabel(ram_label, String.valueOf(dub2) + "%");
+                                }
+                                break;
+                            case "NET":
+                                Double dub3 = sysUtil.getNetworkUsage();
+                                dub3 = (double) Math.round(dub3 * 100) / 100;
+                                if (dub3 > sysUtil.getMaxTraffic()) {
+                                    sysUtil.setMaxTraffic(dub3.intValue() + 100);
+                                }
+                                if (dub3 != null) {
+                                    dataObj.setYValue(dub3);
+                                    updateLabel(net_label, String.valueOf(dub3) + "%");
+                                }
+                                break;
+                        }
+
+                    }
+                    for (PieChart.Data d : storage_chart.getData()) {
+                        String forSwitch = d.getName().substring(0, 4);
+                        switch (forSwitch) {
+                            case "Used":
+                                Double value1 = sysUtil.getUsedSpacePercentLinux();
+                                d.setPieValue(value1 * 100);
+                                updatePieLabel(d, forSwitch + " " + (value1 * 100) + "%");
+                                long usedspace = sysUtil.getUsedSpaceKbLinux();
+                                String label1 = String.valueOf(usedspace / 1024) + " Mb" + " (" + (usedspace / 1024 / 1024) + " Gb)";
+                                updateLabel(usedspace_label, label1);
+                                break;
+                            case "Free":
+                                Double value2 = 1 - sysUtil.getUsedSpacePercentLinux();
+                                d.setPieValue(value2 * 100);
+                                updatePieLabel(d, forSwitch + " " + (value2 * 100) + "%");
+                                long freespacekb = sysUtil.getFreeSpaceKbLinux();
+                                String label2 = String.valueOf(freespacekb / 1024) + " Mb" + " (" + (freespacekb / 1024 / 1024) + " Gb)";
+                                updateLabel(freespace_label, label2);
+                                break;
                         }
                     }
                 }
@@ -340,28 +376,22 @@ public class MainViewFXMLController implements Initializable {
         }).start();
     }
 
-    public static double getProcessCpuLoad() {
-        Double value = Double.NaN;
-        try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            ObjectName name = ObjectName.getInstance("java.lang:type=OperatingSystem");
-            AttributeList list = mbs.getAttributes(name, new String[]{"ProcessCpuLoad"});
-            if (list.isEmpty()) {
-                return Double.NaN;
+    public void updateLabel(Label l, String s) {
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                l.setText(s);
             }
-            Attribute att = (Attribute) list.get(0);
-            value = (Double) att.getValue();
-            if (value == -1.0) {
-                return Double.NaN;
-            }// usually takes a couple of seconds before we get real values
-
-            // returns a percentage value with 1 decimal point precision
-        } catch (MalformedObjectNameException | ReflectionException | InstanceNotFoundException e) {
-            e.printStackTrace();
-        }
-        return ((int) (value * 1000) / 10.0);
+        });
     }
-    
-    
 
+    public void updatePieLabel(PieChart.Data d, String s) {
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                d.setName(s);
+            }
+        });
+
+    }
 }

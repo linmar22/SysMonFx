@@ -5,6 +5,7 @@
  */
 package Util;
 
+import java.io.File;
 import org.hyperic.sigar.*;
 
 /**
@@ -12,42 +13,83 @@ import org.hyperic.sigar.*;
  * @author root
  */
 public class SysUtil {
+
     Integer maxTraffic = 100;
     Sigar sigar = new Sigar();
-    
-    public Double getCPULoad(){
-        try{
+
+    public Double getCPULoad() {
+        try {
             Double load = sigar.getCpuPerc().getCombined();
-            Double rounded = (double) Math.round(load*10000)/100;
-        return rounded;
-        }catch(SigarException sigex){
+            Double rounded = (double) Math.round(load * 10000) / 100;
+            return rounded;
+        } catch (SigarException sigex) {
             sigex.printStackTrace();
             return null;
         }
     }
-    
-    public Double getMemoryUsage(){
-        try{
+
+    public Double getMemoryUsage() {
+        try {
             Double used = sigar.getMem().getUsedPercent();
             return used;
-        }catch(SigarException sigex){
+        } catch (SigarException sigex) {
+            sigex.printStackTrace();
+            return null;
+        }
+    }
+
+    public Double getNetworkUsage() {
+        Double usage;
+        try {
+            Integer in = sigar.getNetStat().getAllInboundTotal();
+            Integer out = sigar.getNetStat().getAllOutboundTotal();
+            Integer traffic = in + out;
+            usage = Double.valueOf(maxTraffic / 100 * traffic);
+            Double rounded = (double) Math.round(usage);
+            return rounded;
+        } catch (SigarException sigex) {
+            sigex.printStackTrace();
+            return null;
+        }
+    }
+
+    public Double getUsedSpacePercentLinux() {
+        try {
+            FileSystemUsage fsu = sigar.getFileSystemUsage("/");
+            return fsu.getUsePercent();
+        } catch (SigarException sigex) {
             sigex.printStackTrace();
             return null;
         }
     }
     
-    public Double getNetworkUsage(){ 
-        Double usage;
-        try{
-            Integer in = sigar.getNetStat().getAllInboundTotal();
-            Integer out = sigar.getNetStat().getAllOutboundTotal();
-            Integer traffic = in+out;
-            usage = Double.valueOf(maxTraffic/100*traffic);
-            Double rounded = (double) Math.round(usage*100);
-            return rounded;
-        }catch(SigarException sigex){
+    public long getUsedSpaceKbLinux(){
+        try {
+            FileSystemUsage fsu = sigar.getFileSystemUsage("/");
+            return fsu.getUsed();
+        } catch (SigarException sigex) {
             sigex.printStackTrace();
-            return null;
+            return -1;
+        }
+    }
+    
+    public long getFreeSpaceKbLinux(){
+        try {
+            FileSystemUsage fsu = sigar.getFileSystemUsage("/");
+            return fsu.getTotal()-fsu.getUsed();
+        } catch (SigarException sigex) {
+            sigex.printStackTrace();
+            return -1;
+        }
+    }
+    
+    public long getTotalSpaceKbLinux(){
+        try {
+            FileSystemUsage fsu = sigar.getFileSystemUsage("/");
+            return fsu.getTotal();
+        } catch (SigarException sigex) {
+            sigex.printStackTrace();
+            return -1;
         }
     }
 
@@ -58,9 +100,5 @@ public class SysUtil {
     public Integer getMaxTraffic() {
         return maxTraffic;
     }
-    
-    
-    
-    
-    
+
 }
