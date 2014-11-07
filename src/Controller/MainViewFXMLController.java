@@ -7,28 +7,45 @@
 package Controller;
 
 import Model.Target;
+import Util.LogUtil;
 import Util.Pinger;
 import Util.SysUtil;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.chart.BarChart;
-import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.effect.Effect;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.util.Callback;
 
 /**
@@ -36,6 +53,9 @@ import javafx.util.Callback;
  * @author root
  */
 public class MainViewFXMLController implements Initializable {
+
+    ExecutorService exec;
+    LogUtil logUtil;
 
     SysUtil sysUtil;
     long lastLabelUpdate = 0;
@@ -55,13 +75,30 @@ public class MainViewFXMLController implements Initializable {
 
     @FXML
     private BarChart<String, Number> cpu_graph;
-    @FXML
-    private CategoryAxis categoryAxis;
     XYChart.Series cpuSeries;
 
     @FXML
     private PieChart storage_chart;
     XYChart.Series storageSeries;
+
+    @FXML
+    private AnchorPane overviewAnchorPane;
+    @FXML
+    TitledPane systemTitledPane;
+    @FXML
+    AnchorPane systemAnchorPane;
+    @FXML
+    VBox systemVBox;
+    @FXML
+    HBox systemHBox;
+    @FXML
+    VBox system_resourcesVBox;
+    @FXML
+    VBox system_FileSystemVBox;
+    @FXML
+    HBox system_FileSystemHBox;
+    @FXML
+    Pane system_resourcesPane;
 
     @FXML
     private Label cpu_label;
@@ -77,6 +114,15 @@ public class MainViewFXMLController implements Initializable {
     private Label totalspace_label;
 
     @FXML
+    TitledPane monitoringTitledPane;
+    @FXML
+    AnchorPane monitoringAnchorPane;
+    @FXML
+    Pane infoPane;
+    @FXML
+    GridPane infoGridPane;
+
+    @FXML
     private Label targets_infoLabel;
     @FXML
     private Label active_infoLabel;
@@ -87,19 +133,31 @@ public class MainViewFXMLController implements Initializable {
     @FXML
     private Label unknownhosts_infoLabel;
     @FXML
+    private Label monitored_infoLabel;
+    @FXML
+    private Label paused_infoLabel;
+    @FXML
     private Label lastupdate_infoLabel;
-    
-    @FXML private LineChart<Number,Number> cycleChart;
-    @FXML private NumberAxis secondAxis;
+
+    @FXML
+    private LineChart<Number, Number> cycleChart;
+    @FXML
+    private NumberAxis secondAxis;
     XYChart.Series cycleSeries;
 
+    @FXML
+    TextArea output_console;
+    @FXML TitledPane output_TitledPane;
+    @FXML AnchorPane output_AnchorPane;
+    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         sysUtil = new SysUtil();
+        initLogger();
         createTargets();
         initTable();
         initChart();
-        initCPUgraph();
+        initSystemGraph();
         initCycleChart();
         setLastLabelUpdate();
         startLabelUpdateCounter();
@@ -107,76 +165,108 @@ public class MainViewFXMLController implements Initializable {
     }
 
     public static void createTargets() {
-        Target t1 = new Target("PENDING", "Serveriai.lt", null, "79.98.29.20", null, 0);
-        Target t2 = new Target("PENDING", "Delfi", "www.delfi.lt", null, null, 0);
-        Target t3 = new Target("PENDING", "Google.org", "www.google.org", null, null, 0);
-        Target t4 = new Target("PENDING", "Local peer", null, "192.168.1.140", null, 0);
-        Target t5 = new Target("PENDING", "Amazon.co.uk", "www.amazon.co.uk", null, null, 0);
-        Target t6 = new Target("PENDING", "NASA", "www.nasa.gov", null, null, 0);
-        Target t7 = new Target("PENDING", "BBC", "www.bbc.co.uk", null, null, 0);
-        Target t8 = new Target("PENDING", "FakeWebsite.com", "www.longfakewebsitename.com", "123.456.789.245", null, 0);
-        Target t9 = new Target("PENDING", "Linux Mint", "www.linuxmint.com", null, null, 0);
-        Target t0 = new Target("PENDING", "Facebook", "www.facebook.com", null, null, 0);
-        Target t10 = new Target("PENDING", "Youtube", "www.youtube.com", null, null, 0);
-        Target t11 = new Target("PENDING", "W3Schools", "www.w3schools.com", null, null, 0);
-        Target t12 = new Target("PENDING", "Docs.Oracle", "docs.oracle.com", null, null, 0);
-        Target t13 = new Target("PENDING", "StackOverflow", "stackoverflow.com", null, null, 0);
-        Target t14 = new Target("PENDING", "ClassicRock.fm", null, "5.20.233.18", null, 0);
-        Target t15 = new Target("PENDING", "GMail", "mail.google.com", null, null, 0);
-        Target t16 = new Target("PENDING", "Mail.com", "www.mail.com", null, null, 0);
-        Target t17 = new Target("PENDING", "Tutorialspoint", "www.tutorialspoint.com", null, null, 0);
-        Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0);
-        Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0);
-        Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0);
-        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5",null,0);
-        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8",null,0);
-        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4",null,0);
-        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk",null, null,0);
+        Target t1 = new Target("PENDING", "Serveriai.lt", null, "79.98.29.20", null, 0, "A");
+        Target t2 = new Target("PENDING", "Delfi", "www.delfi.lt", null, null, 0, "A");
+        Target t3 = new Target("PENDING", "Google.org", "www.google.org", null, null, 0, "A");
+        Target t4 = new Target("PENDING", "Local peer", null, "192.168.1.140", null, 0, "A");
+        Target t5 = new Target("PENDING", "Amazon.co.uk", "www.amazon.co.uk", null, null, 0, "A");
+        Target t6 = new Target("PENDING", "NASA", "www.nasa.gov", null, null, 0, "A");
+        Target t7 = new Target("PENDING", "BBC", "www.bbc.co.uk", null, null, 0, "A");
+        Target t8 = new Target("PENDING", "FakeWebsite.com", "www.longfakewebsitename.com", "123.456.789.245", null, 0, "A");
+        Target t9 = new Target("PENDING", "Linux Mint", "www.linuxmint.com", null, null, 0, "A");
+        Target t0 = new Target("PENDING", "Facebook", "www.facebook.com", null, null, 0, "A");
+        Target t10 = new Target("PENDING", "Youtube", "www.youtube.com", null, null, 0, "A");
+        Target t11 = new Target("PENDING", "W3Schools", "www.w3schools.com", null, null, 0, "A");
+        Target t12 = new Target("PENDING", "Docs.Oracle", "docs.oracle.com", null, null, 0, "A");
+        Target t13 = new Target("PENDING", "StackOverflow", "stackoverflow.com", null, null, 0, "A");
+        Target t14 = new Target("PENDING", "ClassicRock.fm", null, "5.20.233.18", null, 0, "A");
+        Target t15 = new Target("PENDING", "GMail", "mail.google.com", null, null, 0, "A");
+        Target t16 = new Target("PENDING", "Mail.com", "www.mail.com", null, null, 0, "A");
+        Target t17 = new Target("PENDING", "Tutorialspoint", "www.tutorialspoint.com", null, null, 0, "A");
+        Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0, "A");
+        Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0, "AM");
+        Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0, "A");
+        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5", null, 0, "A");
+        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8", null, 0, "A");
+        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4", null, 0, "A");
+        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk", null, null, 0, "A");
 
-        targets.add(t1);targets.add(t2);targets.add(t3);targets.add(t4);targets.add(t5);targets.add(t6);targets.add(t7);targets.add(t8);targets.add(t9);
-        targets.add(t0);targets.add(t10);targets.add(t11);targets.add(t12);targets.add(t13);targets.add(t14);targets.add(t15);targets.add(t16);
-        targets.add(t17);targets.add(t18);targets.add(t19);targets.add(t20);targets.add(t21);targets.add(t22);targets.add(t23);targets.add(t24);
+        targets.add(t1);
+        targets.add(t2);
+        targets.add(t3);
+        targets.add(t4);
+        targets.add(t5);
+        targets.add(t6);
+        targets.add(t7);
+        targets.add(t8);
+        targets.add(t9);
+        targets.add(t0);
+        targets.add(t10);
+        targets.add(t11);
+        targets.add(t12);
+        targets.add(t13);
+        targets.add(t14);
+        targets.add(t15);
+        targets.add(t16);
+        targets.add(t17);
+        targets.add(t18);
+        targets.add(t19);
+        targets.add(t20);
+        targets.add(t21);
+        targets.add(t22);
+        targets.add(t23);
+        targets.add(t24);
 
     }
 
     public void beginPing() {
-        new Thread(new Runnable() {
+        ExecutorService exec = Executors.newCachedThreadPool();
+
+        Runnable r = new Runnable() {
             @Override
             public void run() {
-                
                 while (true) {
                     for (Target t : targets) {
-                        for (XYChart.Series s : lineChart.getData()) {
-                            String ping = null;
+                        String ping = null;
+                        if (t.flagsProperty().get().contains("A")) {
                             try {
-                                
-                                if (s.getName().equals(t.nameProperty().get())) {
-                                    Callable c = new Pinger(t);
-                                    ping = c.call().toString();
-                                    switch (ping) {
-                                        case "TIME_OUT":
-                                            addToChart(s, cycle, 00.00);
-                                            t.setStatus("TIME OUT");
-                                            t.setLastrtt("TIME_OUT");
-                                            t.setTimeouts(t.timeoutsProperty().get() + 1);
-                                            break;
-                                        case "UNKNOWN_HOST":
-                                            t.setStatus("ERROR");
-                                            t.setLastrtt("UNKNOWN HOST");
-                                            break;
-                                        case "UNREACHABLE":
-                                            t.setStatus("ERROR");
-                                            t.setLastrtt("UNREACHABLE HOST");
-                                            break;
-                                        default:
-                                            t.setLastrtt(ping);
-                                            t.setStatus("ACTIVE");
-                                            addToChart(s, cycle, Double.valueOf(ping));
-                                            break;
-                                    }
+                                Callable c = new Pinger(t);
+                                ping = c.call().toString();
+                                switch (ping) {
+                                    case "TIME_OUT":
+                                        for (XYChart.Series s : lineChart.getData()) {
+                                            if (s.getName().equals(t.nameProperty().get())) {
+                                                addToChart(s, cycle, 00.00);
+                                                
+                                            }
+                                        }
+                                        t.setStatus("TIME OUT");
+                                        t.setLastrtt("TIME_OUT");
+                                        t.setTimeouts(t.timeoutsProperty().get() + 1);
+                                        logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - timed out!");
+                                        break;
+                                    case "UNKNOWN_HOST":
+                                        t.setStatus("ERROR");
+                                        t.setLastrtt("UNKNOWN HOST");
+                                        logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - unknown host!");
+                                        break;
+                                    case "UNREACHABLE":
+                                        t.setStatus("ERROR");
+                                        t.setLastrtt("UNREACHABLE HOST");
+                                        logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - is unreachable!");
+                                        break;
+                                    default:
+                                        t.setLastrtt(ping);
+                                        t.setStatus("ACTIVE");
+                                        for (XYChart.Series s : lineChart.getData()) {
+                                            if (s.getName().equals(t.nameProperty().get())) {
+                                                addToChart(s, cycle, Double.valueOf(ping));
+                                            }
+                                        }
+                                        break;
                                 }
                             } catch (Exception e) {
-                                System.out.println(ping);
+                                logUtil.log(LogUtil.CRITICAL, e.getMessage() + ", "+ e.getCause());
                                 e.printStackTrace();
                             }
                         }
@@ -186,7 +276,9 @@ public class MainViewFXMLController implements Initializable {
                     updateInfo();
                 }
             }
-        }).start();
+        };
+        exec.execute(r);
+
     }
 
     public void initChart() {
@@ -194,13 +286,23 @@ public class MainViewFXMLController implements Initializable {
         timeAxis.setLowerBound(00.00);
         timeAxis.setUpperBound(100.00);
         for (Target t : targets) {
-            series = new XYChart.Series();
-            series.setName(t.nameProperty().get());
-            lineChart.getData().add(series);
+
+            if (t.flagsProperty().get().contains("M")) {
+                series = new XYChart.Series();
+                series.setName(t.nameProperty().get());
+                lineChart.getData().add(series);
+            }
         }
     }
-    
-    public void initCycleChart(){
+
+    public void initCycleChart() {
+        monitoringTitledPane.setExpanded(true);
+        infoPane.prefWidthProperty().bind(monitoringTitledPane.widthProperty().subtract(monitoringTitledPane.widthProperty()).add(260.00));
+        infoPane.prefHeightProperty().bind(monitoringTitledPane.heightProperty().subtract(50));
+        infoGridPane.prefWidthProperty().bind(infoPane.widthProperty());
+        infoGridPane.prefHeightProperty().bind(infoPane.heightProperty().subtract(15));
+        cycleChart.prefWidthProperty().bind(monitoringTitledPane.widthProperty().subtract(infoPane.widthProperty()).subtract(30));
+
         cycleChart.setCreateSymbols(false);
         cycleChart.setLegendVisible(false);
         secondAxis.setLowerBound(00.00);
@@ -220,6 +322,7 @@ public class MainViewFXMLController implements Initializable {
     public void initTable() {
 
         TableColumn statusCol = new TableColumn();
+        TableColumn flagsCol = new TableColumn();
         TableColumn nameCol = new TableColumn();
         TableColumn domainCol = new TableColumn();
         TableColumn addressCol = new TableColumn();
@@ -227,23 +330,28 @@ public class MainViewFXMLController implements Initializable {
         TableColumn timeoutsCol = new TableColumn();
 
         statusCol.setText("Status");
+        flagsCol.setText("F");
         nameCol.setText("Name");
         domainCol.setText("Domain");
         addressCol.setText("Address");
         pingCol.setText("Ping");
         timeoutsCol.setText("Timeouts");
 
+        setTableListeners();
+
         statusCol.prefWidthProperty().bind(target_table.widthProperty().divide(10));
+        flagsCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(0.5));
         nameCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(2));
         domainCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(2));
         addressCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(2));
         pingCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(1.5));
-        timeoutsCol.prefWidthProperty().bind(target_table.widthProperty().divide(10).multiply(1.5));
+        timeoutsCol.prefWidthProperty().bind(target_table.widthProperty().divide(10));
 
-        target_table.getColumns().addAll(statusCol, nameCol, domainCol, addressCol, pingCol, timeoutsCol);
+        target_table.getColumns().addAll(statusCol, flagsCol, nameCol, domainCol, addressCol, pingCol, timeoutsCol);
         target_table.setItems(targets);
 
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        flagsCol.setCellValueFactory(new PropertyValueFactory<>("flags"));
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         domainCol.setCellValueFactory(new PropertyValueFactory<>("domain"));
         addressCol.setCellValueFactory(new PropertyValueFactory<>("address"));
@@ -261,25 +369,109 @@ public class MainViewFXMLController implements Initializable {
                     public void updateItem(String item, boolean empty) {
                         super.updateItem(item, empty);
                         if (!isEmpty()) {
-                            String color = null;
+                            String colorBG = null;
+                            Color colorFG = null;
                             switch (String.valueOf(item)) {
                                 case "ERROR":
-                                    color = "red";
+                                    colorBG = "red";
+                                    colorFG = Color.BLACK;
                                     break;
                                 case "ACTIVE":
-                                    color = "green";
+                                    colorBG = "green";
+                                    colorFG = Color.WHITE;
                                     break;
                                 case "TIME OUT":
-                                    color = "yellow";
+                                    colorBG = "yellow";
+                                    colorFG = Color.BLACK;
+                                    break;
+                                case "PAUSED":
+                                    colorBG = "grey";
+                                    colorFG = Color.WHITE;
+                                    break;
+                                default:
+                                    colorBG = "white";
+                                    colorFG = Color.BLACK;
                                     break;
                             }
-                            this.setStyle("-fx-background-color:" + color);
+                            this.setStyle("-fx-background-color:" + colorBG);
+                            this.setTextFill(colorFG);
                             setText(item);
                         }
                     }
                 };
             }
         });
+    }
+
+    public void setTableListeners() {
+        target_table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        final ContextMenu rightClickMenu = new ContextMenu();
+        final MenuItem addToMonitoringItem = new MenuItem("Add to monitoring");
+        final MenuItem removeFromMonitoringItem = new MenuItem("Remove from monitoring");
+        final MenuItem pausePingItem = new MenuItem("Halt ping");
+        final MenuItem resumePingItem = new MenuItem("Resume ping");
+
+        addToMonitoringItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                ObservableList<Target> selectedList = target_table.getSelectionModel().getSelectedItems();
+                for (Target t : selectedList) {
+                    t.addFlag("M");
+                    series = new XYChart.Series();
+                    series.setName(t.nameProperty().get());
+                    lineChart.getData().add(series);
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - added to ping chart.");
+                }
+            }
+        });
+        removeFromMonitoringItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                ArrayList<Target> selectedList = new ArrayList<>(target_table.getSelectionModel().getSelectedItems());
+                for (Target t : selectedList) {
+                    t.removeFlag("M");
+                    ObservableList<XYChart.Series<Number, Number>> theSeries = lineChart.getData();
+                    for (XYChart.Series s : theSeries) {
+                        if (s.getName().equals(t.nameProperty().get())) {
+                            removeSeries(s);
+                            logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - removed from ping chart.");
+                        }
+                    }
+
+                }
+            }
+        });
+
+        pausePingItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                ObservableList<Target> selectedList = target_table.getSelectionModel().getSelectedItems();
+                for (Target t : selectedList) {
+                    t.removeFlag("A");
+                    t.setStatus("PAUSED");
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - paused ping.");
+                }
+            }
+        });
+
+        resumePingItem.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                ObservableList<Target> selectedList = target_table.getSelectionModel().getSelectedItems();
+                for (Target t : selectedList) {
+                    t.addFlag("A");
+                    t.setStatus("PENDING");
+                    t.setLastrtt("");
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - resumed ping.");
+                }
+            }
+        });
+
+        removeFromMonitoringItem.disableProperty().bind(Bindings.isEmpty(target_table.getSelectionModel().getSelectedItems()));
+        addToMonitoringItem.disableProperty().bind(Bindings.isEmpty(target_table.getSelectionModel().getSelectedItems()));
+        rightClickMenu.getItems().addAll(addToMonitoringItem, removeFromMonitoringItem, pausePingItem, resumePingItem);
+        target_table.setContextMenu(rightClickMenu);
     }
 
     public synchronized void addToChart(XYChart.Series s, int pos, Double value) {
@@ -291,8 +483,32 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
-    public void initCPUgraph() {
-        cpu_graph.setCategoryGap(10);
+    public synchronized void removeSeries(XYChart.Series s) {
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                lineChart.getData().remove(s);
+            }
+        });
+    }
+
+    public void initSystemGraph() {
+        cpu_graph.setCategoryGap(50);
+        cpu_graph.setBarGap(0);
+        systemTitledPane.prefHeightProperty().bind(overviewAnchorPane.heightProperty());
+        systemAnchorPane.prefHeightProperty().bind(systemTitledPane.heightProperty());
+
+        systemVBox.prefHeightProperty().bind(systemTitledPane.heightProperty());
+        systemHBox.prefHeightProperty().bind(systemTitledPane.heightProperty());
+
+        system_resourcesVBox.prefHeightProperty().bind(systemTitledPane.heightProperty());
+        system_FileSystemVBox.prefHeightProperty().bind(systemTitledPane.heightProperty());
+        system_FileSystemHBox.prefHeightProperty().bind(system_resourcesPane.heightProperty());
+
+        cpu_graph.prefWidthProperty().bind(systemTitledPane.widthProperty().divide(2));
+        cpu_graph.prefHeightProperty().bind(systemTitledPane.heightProperty().divide(10).multiply(8));
+        storage_chart.prefWidthProperty().bind(systemTitledPane.widthProperty().divide(2));
+        storage_chart.prefHeightProperty().bind(systemTitledPane.heightProperty().divide(10).multiply(8));
 
         cpuSeries = new XYChart.Series();
         cpu_graph.getData().add(cpuSeries);
@@ -373,7 +589,7 @@ public class MainViewFXMLController implements Initializable {
                             case "Used":
                                 Double value1 = sysUtil.getUsedSpacePercentLinux();
                                 d.setPieValue(value1 * 100);
-                                updatePieLabel(d, forSwitch + " " + (value1 * 100) + "%");
+                                updatePieLabel(d, forSwitch + " " + (Math.round((value1 * 100) * 100.00) / 100.00) + "%");
                                 long usedspace = sysUtil.getUsedSpaceKbLinux();
                                 String label1 = String.valueOf(usedspace / 1024) + " Mb" + " (" + (usedspace / 1024 / 1024) + " Gb)";
                                 updateLabel(usedspace_label, label1);
@@ -381,7 +597,7 @@ public class MainViewFXMLController implements Initializable {
                             case "Free":
                                 Double value2 = 1 - sysUtil.getUsedSpacePercentLinux();
                                 d.setPieValue(value2 * 100);
-                                updatePieLabel(d, forSwitch + " " + (value2 * 100) + "%");
+                                updatePieLabel(d, forSwitch + " " + (Math.round((value2 * 100) * 100.00) / 100.00) + "%");
                                 long freespacekb = sysUtil.getFreeSpaceKbLinux();
                                 String label2 = String.valueOf(freespacekb / 1024) + " Mb" + " (" + (freespacekb / 1024 / 1024) + " Gb)";
                                 updateLabel(freespace_label, label2);
@@ -417,21 +633,31 @@ public class MainViewFXMLController implements Initializable {
         int unreachable = 0;
         int unknown = 0;
         int active = 0;
+        int monitored = 0;
+        int paused = 0;
 
         for (Target t : targets) {
-            switch (t.lastrttProperty().get()) {
-                case "TIME_OUT":
-                    timeouts++;
-                    break;
-                case "UNREACHABLE HOST":
-                    unreachable++;
-                    break;
-                case "UNKNOWN HOST":
-                    unknown++;
-                    break;
-                default:
-                    active++;
-                    break;
+            if (t.lastrttProperty().get() != null) {
+                switch (t.lastrttProperty().get()) {
+                    case "TIME_OUT":
+                        timeouts++;
+                        break;
+                    case "UNREACHABLE HOST":
+                        unreachable++;
+                        break;
+                    case "UNKNOWN HOST":
+                        unknown++;
+                        break;
+                    default:
+                        active++;
+                        break;
+                }
+            }
+            if (t.flagsProperty().get().contains("M")) {
+                monitored++;
+            }
+            if (t.flagsProperty().get().contains("P")) {
+                paused++;
             }
         }
         updateLabel(targets_infoLabel, String.valueOf(total));
@@ -439,8 +665,10 @@ public class MainViewFXMLController implements Initializable {
         updateLabel(timedout_infoLabel, String.valueOf(timeouts));
         updateLabel(unreachable_infoLabel, String.valueOf(unreachable));
         updateLabel(unknownhosts_infoLabel, String.valueOf(unknown));
-        lastCycleInterval = (System.currentTimeMillis()-lastLabelUpdate)/1000;
-        updateLabel(lastupdate_infoLabel, String.valueOf(lastCycleInterval+"s"));
+        updateLabel(monitored_infoLabel, String.valueOf(monitored));
+        updateLabel(paused_infoLabel, String.valueOf(paused));
+        lastCycleInterval = (System.currentTimeMillis() - lastLabelUpdate) / 1000;
+        updateLabel(lastupdate_infoLabel, String.valueOf(lastCycleInterval + "s"));
         setLastLabelUpdate();
     }
 
@@ -450,9 +678,9 @@ public class MainViewFXMLController implements Initializable {
             public void run() {
                 while (true) {
                     try {
-                        if(cycle+5>secondAxis.getUpperBound()){
-                            secondAxis.setUpperBound(cycle+5);
-                            secondAxis.setLowerBound(cycle-50);
+                        if (cycle + 5 > secondAxis.getUpperBound()) {
+                            secondAxis.setUpperBound(cycle + 5);
+                            secondAxis.setLowerBound(cycle - 50);
                         }
                         addToChart(cycleSeries, cycle, Double.valueOf(lastCycleInterval));
                         Thread.sleep(1000);
@@ -466,5 +694,33 @@ public class MainViewFXMLController implements Initializable {
 
     public void setLastLabelUpdate() {
         lastLabelUpdate = System.currentTimeMillis();
+    }
+
+    public void initLogger() {
+        logUtil = new LogUtil(output_console);
+        
+        output_AnchorPane.prefHeightProperty().bind(output_TitledPane.heightProperty());
+               
+        output_console.prefWidthProperty().bind(monitoringTitledPane.widthProperty().subtract(1));
+        output_console.prefHeightProperty().bind(output_TitledPane.heightProperty().subtract(27));
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                output_console.setText("  #############################################");
+                output_console.appendText('\n' + "  #|        SERVER MONITORING CONSOLE        |#");
+                output_console.appendText('\n' + "  #|                  v0.1                   |#");
+                output_console.appendText('\n' + "  #|-----------------------------------------|#");
+                output_console.appendText('\n' + "  #|               INFO LEVELS               |#");
+                output_console.appendText('\n' + "  #|                                         |#");
+                output_console.appendText('\n' + "  #| [INFO] - Information                    |#");
+                output_console.appendText('\n' + "  #| [WARN] - Warning                        |#");
+                output_console.appendText('\n' + "  #| [SEVE] - Severe                         |#");
+                output_console.appendText('\n' + "  #| [CRIT] - Critical                       |#");
+                output_console.appendText('\n' + "  #|                                         |#");
+                output_console.appendText('\n' + "  #############################################");
+                output_console.appendText('\n'+" ");
+            }
+        });
+
     }
 }

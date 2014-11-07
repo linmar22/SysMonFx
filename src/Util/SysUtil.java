@@ -5,7 +5,6 @@
  */
 package Util;
 
-import java.io.File;
 import org.hyperic.sigar.*;
 
 /**
@@ -62,8 +61,8 @@ public class SysUtil {
             return null;
         }
     }
-    
-    public long getUsedSpaceKbLinux(){
+
+    public long getUsedSpaceKbLinux() {
         try {
             FileSystemUsage fsu = sigar.getFileSystemUsage("/");
             return fsu.getUsed();
@@ -72,18 +71,18 @@ public class SysUtil {
             return -1;
         }
     }
-    
-    public long getFreeSpaceKbLinux(){
+
+    public long getFreeSpaceKbLinux() {
         try {
             FileSystemUsage fsu = sigar.getFileSystemUsage("/");
-            return fsu.getTotal()-fsu.getUsed();
+            return fsu.getTotal() - fsu.getUsed();
         } catch (SigarException sigex) {
             sigex.printStackTrace();
             return -1;
         }
     }
-    
-    public long getTotalSpaceKbLinux(){
+
+    public long getTotalSpaceKbLinux() {
         try {
             FileSystemUsage fsu = sigar.getFileSystemUsage("/");
             return fsu.getTotal();
@@ -99,6 +98,11 @@ public class SysUtil {
 
     public Integer getMaxTraffic() {
         return maxTraffic;
+    }
+
+    public int getNumberOfCores() {
+        CpuInfo cpui = new CpuInfo();
+        return cpui.getTotalSockets();
     }
 
 }

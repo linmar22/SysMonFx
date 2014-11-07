@@ -25,17 +25,17 @@ public class Pinger implements Callable {
 
     @Override
     public String call() throws Exception {
-        if (target.domainProperty().get()!= null) {
-            if (getOS().contains("LINUX")) {
-                return pingLinux(target.domainProperty().get());
-            } else {
+        if (target.domainProperty().get() != null) {
+            if (getOS().contains("WIN")) {
                 return pingWindows(target.domainProperty().get());
-            }
-        }else{
-            if (getOS().contains("LINUX")) {
-                return pingLinux(target.addressProperty().get());
             } else {
+                return pingLinux(target.domainProperty().get());
+            }
+        } else {
+            if (getOS().contains("WIN")) {
                 return pingWindows(target.addressProperty().get());
+            } else {
+                return pingLinux(target.addressProperty().get());
             }
         }
     }
@@ -43,7 +43,7 @@ public class Pinger implements Callable {
     public String pingLinux(String host) {
         try {
             String strCommand = "ping -W 2 -c 1 " + host;
-            
+
             ProcessBuilder b = new ProcessBuilder("/bin/sh", "-c", strCommand);
             Process p = b.start();
             p.waitFor();
@@ -52,25 +52,33 @@ public class Pinger implements Callable {
             BufferedReader errbr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
             String line = "";
             String output = "";
-            
+
             String errLine = "";
             String error = "";
 
             while ((line = br.readLine()) != null) {
                 output += line;
-                if (output.contains("rtt")){
-                    output = output.split("/")[5];
+                if (output.contains("avg/max")) {
+                    output = output.split("/")[4];
+                    //System.out.println("OUTSTRMLINUX = PING = "+output);
                 }
-                if (output.contains(" 0 received")){
+                if (output.contains("100% packet loss")|output.contains("100.0% packet loss")) {
+                    //System.out.println("OUTSTRMLINUX = TIME_OUT..."+'\n'+output);
                     output = "TIME_OUT";
                 }
-            }
-            while((errLine = errbr.readLine())!=null){
-                error += errLine;
-                if(error.contains("unknown")){
+                if (output.toUpperCase().contains("UNKNOWN")) {
+                    //System.out.println("OUTSTRMLINUX = UNKNOWN..."+'\n'+output);
                     output = "UNKNOWN_HOST";
                 }
-                if(error.contains("unreachable")){
+            }
+            while ((errLine = errbr.readLine()) != null) {
+                error += errLine;
+                if (error.toUpperCase().contains("UNKNOWN")) {
+                    //System.out.println("ERRSTRMLINUX = UNKNOWN..."+'\n'+error);
+                    output = "UNKNOWN_HOST";
+                }
+                if (error.contains("unreachable")) {
+                    //System.out.println("ERRSTRMLINUX = UNREACHABLE..."+'\n'+error);
                     output = "UNREACHABLE";
                 }
             }
@@ -80,38 +88,38 @@ public class Pinger implements Callable {
             return null;
         }
     }
-    
-    public String pingWindows(String host){
+
+    public String pingWindows(String host) {
         try {
-            
-            ProcessBuilder b = new ProcessBuilder("ping","-w","2000", "-n", "1", host);
+
+            ProcessBuilder b = new ProcessBuilder("ping", "-w", "2000", "-n", "1", host);
             Process p = b.start();
             p.waitFor();
 
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            
+
             String line = "";
             String output = "";
 
             while ((line = br.readLine()) != null) {
-                output = line+'\n';
-                if (output.contains("Average")){
+                output = line + '\n';
+                if (output.contains("Average")) {
                     output = output.split(",")[2].split(" = ")[1].split("ms")[0];
                 }
-                if (output.contains("100% loss")){
+                if (output.contains("100% loss")) {
                     output = "TIME_OUT";
                 }
-                if (output.contains("could not find host")){
+                if (output.contains("could not find host")) {
                     output = "UNKNOWN_HOST";
                 }
-                if (output.contains("unreachable")){
+                if (output.contains("unreachable")) {
                     output = "UNREACHABLE";
                 }
             }
             return output;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            
+
             return null;
         }
     }
