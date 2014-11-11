@@ -10,8 +10,11 @@ import Model.Target;
 import Util.LogUtil;
 import Util.Pinger;
 import Util.SysUtil;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -23,12 +26,16 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -39,13 +46,17 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.effect.Effect;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.util.Callback;
 
 /**
@@ -55,7 +66,9 @@ import javafx.util.Callback;
 public class MainViewFXMLController implements Initializable {
 
     ExecutorService exec;
+    Runnable r;
     LogUtil logUtil;
+    boolean globalPingerStatus = true;
 
     SysUtil sysUtil;
     long lastLabelUpdate = 0;
@@ -63,6 +76,7 @@ public class MainViewFXMLController implements Initializable {
     int cycle = 0;
 
     static ObservableList<Target> targets = FXCollections.observableArrayList();
+    public List<Target> safeTargets;
 
     @FXML
     private LineChart<Number, Number> lineChart;
@@ -147,12 +161,24 @@ public class MainViewFXMLController implements Initializable {
 
     @FXML
     TextArea output_console;
-    @FXML TitledPane output_TitledPane;
-    @FXML AnchorPane output_AnchorPane;
-    
+    @FXML
+    TitledPane output_TitledPane;
+    @FXML
+    AnchorPane output_AnchorPane;
+
+    @FXML
+    Button toolbar_tooglePingButton;
+    @FXML
+    Label toolbar_statusLabel;
+    @FXML
+    Button toolbar_addPeerButton;
+    @FXML
+    Button toolbar_removePeersButton;
+
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         sysUtil = new SysUtil();
+        initToolbar();
         initLogger();
         createTargets();
         initTable();
@@ -162,34 +188,155 @@ public class MainViewFXMLController implements Initializable {
         setLastLabelUpdate();
         startLabelUpdateCounter();
         beginPing();
+        updatePingChart();
+
+    }
+
+    public void initToolbar() {
+        Image playDark = new Image(getClass().getResourceAsStream("/images/play_dark.png"));
+        Image playLight = new Image(getClass().getResourceAsStream("/images/play_light.png"));
+        Image pauseDark = new Image(getClass().getResourceAsStream("/images/pause_dark.png"));
+        Image pauseLight = new Image(getClass().getResourceAsStream("/images/pause_light.png"));
+        Image xDark = new Image(getClass().getResourceAsStream("/images/x_dark.png"));
+        Image xLight = new Image(getClass().getResourceAsStream("/images/x_light.png"));
+        Image plusDark = new Image(getClass().getResourceAsStream("/images/plus_dark.png"));
+        Image plusLight = new Image(getClass().getResourceAsStream("/images/plus_light.png"));
+
+        ImageView playImageView = new ImageView(pauseDark);
+        playImageView.setPreserveRatio(true);
+        playImageView.setFitHeight(15.00);
+
+        ImageView addPeerImageView = new ImageView(plusDark);
+        ImageView removePeersImageView = new ImageView(xDark);
+        addPeerImageView.setPreserveRatio(true);
+        removePeersImageView.setPreserveRatio(true);
+        addPeerImageView.setFitHeight(15.00);
+        removePeersImageView.setFitHeight(15.00);
+
+        toolbar_tooglePingButton.setText("");
+        toolbar_tooglePingButton.setGraphic(playImageView);
+
+        toolbar_addPeerButton.setGraphic(addPeerImageView);
+        toolbar_removePeersButton.setGraphic(removePeersImageView);
+        toolbar_addPeerButton.prefWidthProperty().bind(toolbar_removePeersButton.widthProperty());
+
+        toolbar_tooglePingButton.addEventHandler(MouseEvent.MOUSE_PRESSED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (playImageView.getImage() == playDark) {
+                    playImageView.setImage(playLight);
+                } else {
+                    playImageView.setImage(pauseLight);
+                }
+            }
+        });
+        toolbar_tooglePingButton.addEventHandler(MouseEvent.MOUSE_RELEASED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (playImageView.getImage() == pauseLight) {
+                    playImageView.setImage(playDark);
+                    globalPingerStatus = false;
+                    if (!exec.isShutdown()) {
+                        updateLabel(toolbar_statusLabel, "Finishing cycle");
+                        colorLabel(toolbar_statusLabel, Color.ORANGE);
+                        exec.shutdown();
+                    }
+                } else {
+                    playImageView.setImage(pauseDark);
+                    globalPingerStatus = true;
+                    beginPing();
+                }
+
+            }
+        });
+
+        toolbar_addPeerButton.addEventHandler(MouseEvent.MOUSE_PRESSED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (addPeerImageView.getImage() == plusDark) {
+                    addPeerImageView.setImage(plusLight);
+                } else {
+                    addPeerImageView.setImage(plusLight);
+                }
+            }
+        });
+        toolbar_addPeerButton.addEventHandler(MouseEvent.MOUSE_RELEASED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (addPeerImageView.getImage() == plusLight) {
+                    addPeerImageView.setImage(plusDark);
+                } else {
+                    addPeerImageView.setImage(plusDark);
+                }
+                showTargetEditor();
+            }
+        });
+
+        toolbar_removePeersButton.addEventHandler(MouseEvent.MOUSE_PRESSED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (removePeersImageView.getImage() == xDark) {
+                    removePeersImageView.setImage(xLight);
+                } else {
+                    removePeersImageView.setImage(xDark);
+                }
+            }
+        });
+        toolbar_removePeersButton.addEventHandler(MouseEvent.MOUSE_RELEASED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent e) {
+                if (removePeersImageView.getImage() == xLight) {
+                    removePeersImageView.setImage(xDark);
+                } else {
+                    removePeersImageView.setImage(xLight);
+                }
+
+            }
+        });
+    }
+
+    public void showTargetEditor() {
+        final Stage dialog = new Stage();
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/servmonfx/TargetEditorFXML.fxml"));
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            Scene dialogScene = new Scene(root);
+            dialogScene.getStylesheets().add("/servmonfx/TargetEditorFXML.fxml");
+            dialog.setScene(dialogScene);
+            dialog.resizableProperty().set(false);
+            dialog.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void createTargets() {
-        Target t1 = new Target("PENDING", "Serveriai.lt", null, "79.98.29.20", null, 0, "A");
-        Target t2 = new Target("PENDING", "Delfi", "www.delfi.lt", null, null, 0, "A");
-        Target t3 = new Target("PENDING", "Google.org", "www.google.org", null, null, 0, "A");
-        Target t4 = new Target("PENDING", "Local peer", null, "192.168.1.140", null, 0, "A");
-        Target t5 = new Target("PENDING", "Amazon.co.uk", "www.amazon.co.uk", null, null, 0, "A");
-        Target t6 = new Target("PENDING", "NASA", "www.nasa.gov", null, null, 0, "A");
-        Target t7 = new Target("PENDING", "BBC", "www.bbc.co.uk", null, null, 0, "A");
-        Target t8 = new Target("PENDING", "FakeWebsite.com", "www.longfakewebsitename.com", "123.456.789.245", null, 0, "A");
-        Target t9 = new Target("PENDING", "Linux Mint", "www.linuxmint.com", null, null, 0, "A");
-        Target t0 = new Target("PENDING", "Facebook", "www.facebook.com", null, null, 0, "A");
-        Target t10 = new Target("PENDING", "Youtube", "www.youtube.com", null, null, 0, "A");
-        Target t11 = new Target("PENDING", "W3Schools", "www.w3schools.com", null, null, 0, "A");
-        Target t12 = new Target("PENDING", "Docs.Oracle", "docs.oracle.com", null, null, 0, "A");
-        Target t13 = new Target("PENDING", "StackOverflow", "stackoverflow.com", null, null, 0, "A");
-        Target t14 = new Target("PENDING", "ClassicRock.fm", null, "5.20.233.18", null, 0, "A");
-        Target t15 = new Target("PENDING", "GMail", "mail.google.com", null, null, 0, "A");
-        Target t16 = new Target("PENDING", "Mail.com", "www.mail.com", null, null, 0, "A");
-        Target t17 = new Target("PENDING", "Tutorialspoint", "www.tutorialspoint.com", null, null, 0, "A");
-        Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0, "A");
-        Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0, "AM");
-        Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0, "A");
-        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5", null, 0, "A");
-        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8", null, 0, "A");
-        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4", null, 0, "A");
-        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk", null, null, 0, "A");
+        Target t1 = new Target("PENDING", "Serveriai.lt", null, "79.98.29.20", null, 0, "A", 0, false);
+        Target t2 = new Target("PENDING", "Delfi", "www.delfi.lt", null, null, 0, "A", 0, false);
+        Target t3 = new Target("PENDING", "Google.org", "www.google.org", null, null, 0, "A", 0, false);
+        Target t4 = new Target("PENDING", "Local peer", null, "192.168.1.140", null, 0, "A", 0, false);
+        Target t5 = new Target("PENDING", "Amazon.co.uk", "www.amazon.co.uk", null, null, 0, "A", 0, false);
+        Target t6 = new Target("PENDING", "NASA", "www.nasa.gov", null, null, 0, "A", 0, false);
+        Target t7 = new Target("PENDING", "BBC", "www.bbc.co.uk", null, null, 0, "A", 0, false);
+        Target t8 = new Target("PENDING", "FakeWebsite.com", "www.longfakewebsitename.com", "123.456.789.245", null, 0, "A", 0, false);
+        Target t9 = new Target("PENDING", "Linux Mint", "www.linuxmint.com", null, null, 0, "A", 0, false);
+        Target t0 = new Target("PENDING", "Facebook", "www.facebook.com", null, null, 0, "A", 0, false);
+        Target t10 = new Target("PENDING", "Youtube", "www.youtube.com", null, null, 0, "A", 0, false);
+        Target t11 = new Target("PENDING", "W3Schools", "www.w3schools.com", null, null, 0, "A", 0, false);
+        Target t12 = new Target("PENDING", "Docs.Oracle", "docs.oracle.com", null, null, 0, "A", 0, false);
+        Target t13 = new Target("PENDING", "StackOverflow", "stackoverflow.com", null, null, 0, "A", 0, false);
+        Target t14 = new Target("PENDING", "ClassicRock.fm", null, "5.20.233.18", null, 0, "A", 0, false);
+        Target t15 = new Target("PENDING", "GMail", "mail.google.com", null, null, 0, "A", 0, false);
+        Target t16 = new Target("PENDING", "Mail.com", "www.mail.com", null, null, 0, "A", 0, false);
+        Target t17 = new Target("PENDING", "Tutorialspoint", "www.tutorialspoint.com", null, null, 0, "A", 0, false);
+        Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0, "A", 0, false);
+        Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0, "AM", 0, false);
+        Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0, "A", 0, false);
+        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5", null, 0, "A", 0, false);
+        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8", null, 0, "A", 0, false);
+        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4", null, 0, "A", 0, false);
+        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk", null, null, 0, "A", 0, false);
 
         targets.add(t1);
         targets.add(t2);
@@ -220,65 +367,65 @@ public class MainViewFXMLController implements Initializable {
     }
 
     public void beginPing() {
-        ExecutorService exec = Executors.newCachedThreadPool();
+        safeTargets = new ArrayList<>();
+        for (Target t : targets) {
+            safeTargets.add(t);
+        }
+        safeTargets = Collections.synchronizedList(targets);
 
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    for (Target t : targets) {
-                        String ping = null;
-                        if (t.flagsProperty().get().contains("A")) {
-                            try {
-                                Callable c = new Pinger(t);
-                                ping = c.call().toString();
-                                switch (ping) {
-                                    case "TIME_OUT":
-                                        for (XYChart.Series s : lineChart.getData()) {
-                                            if (s.getName().equals(t.nameProperty().get())) {
-                                                addToChart(s, cycle, 00.00);
-                                                
-                                            }
-                                        }
-                                        t.setStatus("TIME OUT");
-                                        t.setLastrtt("TIME_OUT");
-                                        t.setTimeouts(t.timeoutsProperty().get() + 1);
-                                        logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - timed out!");
-                                        break;
-                                    case "UNKNOWN_HOST":
-                                        t.setStatus("ERROR");
-                                        t.setLastrtt("UNKNOWN HOST");
-                                        logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - unknown host!");
-                                        break;
-                                    case "UNREACHABLE":
-                                        t.setStatus("ERROR");
-                                        t.setLastrtt("UNREACHABLE HOST");
-                                        logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - is unreachable!");
-                                        break;
-                                    default:
-                                        t.setLastrtt(ping);
-                                        t.setStatus("ACTIVE");
-                                        for (XYChart.Series s : lineChart.getData()) {
-                                            if (s.getName().equals(t.nameProperty().get())) {
-                                                addToChart(s, cycle, Double.valueOf(ping));
-                                            }
-                                        }
-                                        break;
+        exec = Executors.newCachedThreadPool();
+
+        for (int i = 0; i < 4; i++) {
+            exec.execute(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        for (Target t : safeTargets) {
+                            String ping = null;
+                            if (t.isActive() && !t.isIsBeingPinged()) {
+                                t.setIsBeingPinged(true);
+                                t.setPinged(t.getPinged() + 1);
+                                t.setStatus("PINGING");
+                                try {
+                                    Callable c = new Pinger(t);
+                                    ping = c.call().toString();
+                                    switch (ping) {
+                                        case "TIME_OUT":
+                                            t.setStatus("TIME OUT");
+                                            t.setLastrtt("TIME_OUT");
+                                            t.setTimeouts(t.timeoutsProperty().get() + 1);
+                                            logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - timed out!");
+                                            t.setIsBeingPinged(false);
+                                            break;
+                                        case "UNKNOWN_HOST":
+                                            t.setStatus("ERROR");
+                                            t.setLastrtt("UNKNOWN HOST");
+                                            logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - unknown host!");
+                                            t.setIsBeingPinged(false);
+                                            break;
+                                        case "UNREACHABLE":
+                                            t.setStatus("ERROR");
+                                            t.setLastrtt("UNREACHABLE HOST");
+                                            logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - is unreachable!");
+                                            t.setIsBeingPinged(false);
+                                            break;
+                                        default:
+                                            t.setLastrtt(ping);
+                                            t.setStatus("ACTIVE");
+                                            t.setIsBeingPinged(false);
+                                            break;
+                                    }
+                                    System.out.println("C=" + t.getPinged() + " - " + t.nameProperty().get());
+                                } catch (Exception e) {
+                                    logUtil.log(LogUtil.CRITICAL, e.getMessage() + ", " + e.getCause());
+                                    e.printStackTrace();
                                 }
-                            } catch (Exception e) {
-                                logUtil.log(LogUtil.CRITICAL, e.getMessage() + ", "+ e.getCause());
-                                e.printStackTrace();
                             }
                         }
                     }
-                    cycle++;
-                    rangeChart(cycle);
-                    updateInfo();
                 }
-            }
-        };
-        exec.execute(r);
-
+            });
+        }
     }
 
     public void initChart() {
@@ -388,6 +535,10 @@ public class MainViewFXMLController implements Initializable {
                                     colorBG = "grey";
                                     colorFG = Color.WHITE;
                                     break;
+                                case "PINGING":
+                                    colorBG = "white";
+                                    colorFG = Color.RED;
+                                    break;
                                 default:
                                     colorBG = "white";
                                     colorFG = Color.BLACK;
@@ -421,7 +572,7 @@ public class MainViewFXMLController implements Initializable {
                     series = new XYChart.Series();
                     series.setName(t.nameProperty().get());
                     lineChart.getData().add(series);
-                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - added to ping chart.");
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - added to ping chart.");
                 }
             }
         });
@@ -435,7 +586,7 @@ public class MainViewFXMLController implements Initializable {
                     for (XYChart.Series s : theSeries) {
                         if (s.getName().equals(t.nameProperty().get())) {
                             removeSeries(s);
-                            logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - removed from ping chart.");
+                            logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - removed from ping chart.");
                         }
                     }
 
@@ -450,7 +601,7 @@ public class MainViewFXMLController implements Initializable {
                 for (Target t : selectedList) {
                     t.removeFlag("A");
                     t.setStatus("PAUSED");
-                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - paused ping.");
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - paused ping.");
                 }
             }
         });
@@ -463,7 +614,7 @@ public class MainViewFXMLController implements Initializable {
                     t.addFlag("A");
                     t.setStatus("PENDING");
                     t.setLastrtt("");
-                    logUtil.log(LogUtil.INFO, t.nameProperty().get()+ " - resumed ping.");
+                    logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - resumed ping.");
                 }
             }
         });
@@ -609,6 +760,15 @@ public class MainViewFXMLController implements Initializable {
         }).start();
     }
 
+    public void colorLabel(Label l, Color c) {
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                l.setTextFill(c);
+            }
+        });
+    }
+
     public void updateLabel(Label l, String s) {
         Platform.runLater(new Runnable() {
             @Override
@@ -669,6 +829,13 @@ public class MainViewFXMLController implements Initializable {
         updateLabel(paused_infoLabel, String.valueOf(paused));
         lastCycleInterval = (System.currentTimeMillis() - lastLabelUpdate) / 1000;
         updateLabel(lastupdate_infoLabel, String.valueOf(lastCycleInterval + "s"));
+        if (!globalPingerStatus) {
+            updateLabel(toolbar_statusLabel, "Paused");
+            colorLabel(toolbar_statusLabel, Color.BLUE);
+        } else {
+            updateLabel(toolbar_statusLabel, "Running");
+            colorLabel(toolbar_statusLabel, Color.GREEN);
+        }
         setLastLabelUpdate();
     }
 
@@ -698,9 +865,9 @@ public class MainViewFXMLController implements Initializable {
 
     public void initLogger() {
         logUtil = new LogUtil(output_console);
-        
+
         output_AnchorPane.prefHeightProperty().bind(output_TitledPane.heightProperty());
-               
+
         output_console.prefWidthProperty().bind(monitoringTitledPane.widthProperty().subtract(1));
         output_console.prefHeightProperty().bind(output_TitledPane.heightProperty().subtract(27));
         Platform.runLater(new Runnable() {
@@ -718,9 +885,64 @@ public class MainViewFXMLController implements Initializable {
                 output_console.appendText('\n' + "  #| [CRIT] - Critical                       |#");
                 output_console.appendText('\n' + "  #|                                         |#");
                 output_console.appendText('\n' + "  #############################################");
-                output_console.appendText('\n'+" ");
+                output_console.appendText('\n' + " ");
             }
         });
 
     }
+
+    public void updatePingChart() {
+        exec.execute(new Runnable() {
+
+            @Override
+            public void run() {
+                while (true) {
+                    for (Target t : targets) {
+                        if (t.lastrttProperty().get() != null && !t.lastrttProperty().get().isEmpty()) {
+                            switch (t.lastrttProperty().get()) {
+                                case "TIME_OUT":
+                                    for (XYChart.Series s : lineChart.getData()) {
+                                        if (s.getName().equals(t.nameProperty().get())) {
+                                            addToChart(s, cycle, 00.00);
+                                        }
+                                    }
+                                    break;
+                                case "UNKNOWN HOST":
+                                    break;
+                                case "UNREACHABLE":
+                                    break;
+                                default:
+                                    for (XYChart.Series s : lineChart.getData()) {
+                                        if (s.getName().equals(t.nameProperty().get())) {
+                                            addToChart(s, cycle, Double.valueOf(t.lastrttProperty().get()));
+                                        }
+                                    }
+                                    break;
+                            }
+                        }
+
+                    }
+
+                    try {
+                        rangeChart(cycle);
+                        updateInfo();
+                        cycle++;
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+    }
+
+    public boolean getGlobalPingerStatus() {
+        return globalPingerStatus;
+    }
+
+    public void setGlobalPingerStatus(boolean globalPingerStatus) {
+        this.globalPingerStatus = globalPingerStatus;
+    }
+
 }

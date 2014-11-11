@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.effect.*?>
 <?import javafx.scene.text.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.chart.*?>
@@ -30,7 +31,7 @@
           </Menu>
         </menus>
       </MenuBar>
-      <TabPane layoutY="29.0" prefWidth="800.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="29.0">
+      <TabPane layoutY="36.0" prefHeight="564.0" prefWidth="800.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="27.0">
         <tabs>
           <Tab id="overview_tab" text="Overview">
             <content>
@@ -38,7 +39,7 @@
                      <children>
                         <Accordion prefHeight="538.0" prefWidth="800.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                           <panes>
-                            <TitledPane fx:id="monitoringTitledPane" animated="false" text="Monitoring">
+                            <TitledPane fx:id="monitoringTitledPane" animated="false" prefHeight="488.0" prefWidth="800.0" text="Monitoring">
                               <content>
                                 <AnchorPane fx:id="monitoringAnchorPane" minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                                        <padding>
@@ -113,7 +114,8 @@
                                               <NumberAxis animated="false" label="Seconds" side="LEFT" />
                                             </yAxis>
                                           </LineChart>
-                                       </children></AnchorPane>
+                                       </children>
+                                    </AnchorPane>
                               </content>
                             </TitledPane>
                             <TitledPane fx:id="systemTitledPane" animated="false" prefHeight="488.0" prefWidth="400.0" text="System">
@@ -209,24 +211,43 @@
                                           <TextArea fx:id="output_console" editable="false" prefHeight="445.0" prefWidth="798.0">
                                              <font>
                                                 <Font name="Liberation Mono" size="12.0" />
-                                             </font></TextArea>
+                                             </font>
+                                          </TextArea>
                                        </children>
                                     </AnchorPane>
                               </content>
                             </TitledPane>
                           </panes>
                         </Accordion>
-                     </children></AnchorPane>
+                     </children>
+                  </AnchorPane>
             </content>
           </Tab>
           <Tab id="peers_tab" text="Peers">
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                      <children>
-                        <TableView id="target_table" fx:id="target_table" prefHeight="538.0" prefWidth="800.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                        <TableView id="target_table" fx:id="target_table" layoutY="36.0" prefHeight="469.0" prefWidth="800.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="36.0">
 
                         </TableView>
-                     </children></AnchorPane>
+                        <ToolBar prefWidth="800.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+                          <items>
+                              <Button fx:id="toolbar_addPeerButton" mnemonicParsing="false" prefWidth="180.0" text="Add Peer" />
+                              <Button fx:id="toolbar_removePeersButton" mnemonicParsing="false" text="Remove Selected Peers" />
+                              <Separator orientation="VERTICAL" />
+                            <Button fx:id="toolbar_tooglePingButton" mnemonicParsing="false" text="Resume" />
+                              <Label fx:id="toolbar_statusLabel" alignment="CENTER_RIGHT" prefHeight="15.0" text="STATUS">
+                                 <padding>
+                                    <Insets left="10.0" />
+                                 </padding>
+                                 <effect>
+                                    <Shadow />
+                                 </effect>
+                              </Label>
+                          </items>
+                        </ToolBar>
+                     </children>
+                  </AnchorPane>
             </content>
           </Tab>
             <Tab text="Graph">

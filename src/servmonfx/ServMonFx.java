@@ -12,6 +12,7 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -26,9 +27,9 @@ public class ServMonFx extends Application {
         Parent root = FXMLLoader.load(getClass().getResource("MainViewFXML.fxml"));
         Scene scene = new Scene(root);
         scene.getStylesheets().add("View/MainViewFXML.css");
-
         stage.setScene(scene);
         stage.show();
+        
         stage.setMinHeight(600);
         stage.setMinWidth(800);
         stage.setOnCloseRequest(new EventHandler<WindowEvent>() {

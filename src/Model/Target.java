@@ -22,8 +22,10 @@ public class Target{
     SimpleStringProperty lastrtt;
     SimpleIntegerProperty timeouts;
     SimpleStringProperty flags;
+    int pinged;
+    boolean isBeingPinged;
     
-    public Target(String status, String name, String domain, String address, String lastrtt, int timeouts, String flags){
+    public Target(String status, String name, String domain, String address, String lastrtt, int timeouts, String flags, int pinged, boolean isBeingPinged){
         this.status = new SimpleStringProperty(status);
         this.name = new SimpleStringProperty(name);
         this.domain = new SimpleStringProperty(domain);
@@ -31,6 +33,8 @@ public class Target{
         this.lastrtt = new SimpleStringProperty(lastrtt);
         this.timeouts = new SimpleIntegerProperty(timeouts);
         this.flags = new SimpleStringProperty(flags);
+        this.pinged = pinged;
+        this.isBeingPinged = isBeingPinged;
     }
     
     public SimpleStringProperty statusProperty(){
@@ -110,5 +114,29 @@ public class Target{
         this.flags.set(removed);
         }
     }
+    
+    public boolean isActive(){
+        if(this.flags.get().contains("A")){
+            return true;
+        }else return false;
+    }
+
+    public int getPinged() {
+        return pinged;
+    }
+
+    public void setPinged(int pinged) {
+        this.pinged = pinged;
+    }
+
+    public boolean isIsBeingPinged() {
+        return isBeingPinged;
+    }
+
+    public void setIsBeingPinged(boolean isBeingPinged) {
+        this.isBeingPinged = isBeingPinged;
+    }
+    
+    
     
 }
