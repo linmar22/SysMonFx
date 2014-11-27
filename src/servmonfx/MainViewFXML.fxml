@@ -240,9 +240,6 @@
                                  <padding>
                                     <Insets left="10.0" />
                                  </padding>
-                                 <effect>
-                                    <Shadow />
-                                 </effect>
                               </Label>
                           </items>
                         </ToolBar>

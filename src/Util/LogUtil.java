@@ -5,34 +5,43 @@
  */
 package Util;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javafx.application.Platform;
-import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
 
 /**
  *
- * @author root
+ * @author Linas Martusevicius
+ * 
+ * A custom logger implementation.
  */
 public class LogUtil {
-    
-    public final static String INFO     = "[INFO] ";
-    public final static String WARNING  = "[WARN] ";
-    public final static String SEVERE   = "[SEVE] ";
+
+    public final static String INFO = "[INFO] ";
+    public final static String WARNING = "[WARN] ";
+    public final static String SEVERE = "[SEVE] ";
     public final static String CRITICAL = "[CRIT] ";
-    
+
     TextArea console;
-    
-    public LogUtil(TextArea console){
+
+    public LogUtil(TextArea console) {
         this.console = console;
     }
-    
-    public void log(String level, String message){
-        Platform.runLater(new Runnable() {
-            @Override
-            public void run() {
-                console.appendText('\n'+"> "+level + message);
-            }
+
+    /**
+     * Appends a message to the Overview tab's Output segment in the following
+     * format: [TIME] [LEVEL] message.
+     * @param level the level of severity of the message (LogUtil.LEVEL)
+     * @param message a String representation of the message.
+     */
+    public void log(String level, String message) {
+        Platform.runLater(() -> {
+            SimpleDateFormat sdf = new SimpleDateFormat("[kk:mm:ss] ");
+
+            String now = sdf.format(new Date());
+            console.appendText('\n' + now + level + message);
         });
     }
-    
+
 }

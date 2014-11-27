@@ -5,16 +5,17 @@
  */
 package Model;
 
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 
 /**
  *
- * @author root
+ * @author Linas Martusevicius
+ *
+ * The Target object model.
  */
-public class Target{
-    
+public class Target {
+
     SimpleStringProperty status;
     SimpleStringProperty name;
     SimpleStringProperty domain;
@@ -22,10 +23,9 @@ public class Target{
     SimpleStringProperty lastrtt;
     SimpleIntegerProperty timeouts;
     SimpleStringProperty flags;
-    int pinged;
     boolean isBeingPinged;
-    
-    public Target(String status, String name, String domain, String address, String lastrtt, int timeouts, String flags, int pinged, boolean isBeingPinged){
+
+    public Target(String status, String name, String domain, String address, String lastrtt, int timeouts, String flags, boolean isBeingPinged) {
         this.status = new SimpleStringProperty(status);
         this.name = new SimpleStringProperty(name);
         this.domain = new SimpleStringProperty(domain);
@@ -33,15 +33,14 @@ public class Target{
         this.lastrtt = new SimpleStringProperty(lastrtt);
         this.timeouts = new SimpleIntegerProperty(timeouts);
         this.flags = new SimpleStringProperty(flags);
-        this.pinged = pinged;
         this.isBeingPinged = isBeingPinged;
     }
-    
-    public SimpleStringProperty statusProperty(){
+
+    public SimpleStringProperty statusProperty() {
         return status;
     }
-    
-    public void setStatus(String status){
+
+    public void setStatus(String status) {
         this.status.set(status);
     }
 
@@ -84,59 +83,104 @@ public class Target{
     public void setTimeouts(int timeouts) {
         this.timeouts.set(timeouts);
     }
-    
-    public SimpleStringProperty flagsProperty(){
-        if(flags!=null){
+
+    public SimpleStringProperty flagsProperty() {
+        if (flags != null) {
             return flags;
-        }else{
+        } else {
             flags.set("");
             return flags;
         }
     }
-    
-    public void setFlags(String flags){
+
+    /**
+     * Overwrites the Target's flags property value.
+     *
+     * @param flags
+     */
+    public void setFlags(String flags) {
         this.flags.set(flags);
     }
-    
-    public void addFlag(String flag){
+
+    /**
+     * Adds a flag to the Target's flags property value.
+     *
+     * @param flag
+     */
+    public void addFlag(String flag) {
         String current = this.flags.get();
-        
-        if(!current.contains(flag)){
-        this.flags.set(flag + current);
+
+        if (!current.contains(flag)) {
+            this.flags.set(flag + current);
         }
     }
-    
-    public void removeFlag(String flag){
+
+    /**
+     * Removes a specific flag from the Target's flags property.
+     *
+     * @param flag the flag to be removed.
+     */
+    public void removeFlag(String flag) {
         String current = this.flags.get();
-        
-        if(current.contains(flag)){
-        String removed = current.replace(flag, "");
-        this.flags.set(removed);
+
+        if (current.contains(flag)) {
+            String removed = current.replace(flag, "");
+            this.flags.set(removed);
         }
     }
-    
-    public boolean isActive(){
-        if(this.flags.get().contains("A")){
+
+    /**
+     * Indicates whether the Target should be pinged.
+     *
+     * @return true if the Target contains the "A" (Active) flag. False if not.
+     */
+    public boolean isActive() {
+        if (this.flags.get().contains("A")) {
             return true;
-        }else return false;
+        } else {
+            return false;
+        }
     }
 
-    public int getPinged() {
-        return pinged;
-    }
-
-    public void setPinged(int pinged) {
-        this.pinged = pinged;
-    }
-
+    /**
+     * Indicates whether the Target is currently being pinged. Used as a lock
+     * mechanism for for the pingers for bypassing Targets with a large round
+     * trip time. The pinger should check if the Target is currently being
+     * pinged and move on to the next one in the list if this method returns
+     * true.
+     *
+     * @return true if one of the threads is currently pinging this target.
+     * False otherwise.
+     */
     public boolean isIsBeingPinged() {
         return isBeingPinged;
     }
 
+    /**
+     * Part of the locking mechanism for bypassing Targets that are currently
+     * being pinged. Should be set to true while the Target is being pinged and
+     * false at the end of the ping cycle.
+     *
+     * @param isBeingPinged indicates whether the Target is currently being
+     * pinged.
+     */
     public void setIsBeingPinged(boolean isBeingPinged) {
         this.isBeingPinged = isBeingPinged;
     }
-    
-    
-    
+
+    @Override
+    public String toString() {
+        return ("T=[" + nameProperty().get() + ", " + domainProperty().get() + ", " + addressProperty().get() + "]" + '\n' + getInfo(this));
+    }
+
+    /**
+     * A less verbose toString.
+     *
+     * @param t the Target.
+     * @return a String representation of the Target's info.
+     */
+    public String getInfo(Target t) {
+        return ("Status= " + statusProperty().get() + ", LastRTT= " + lastrttProperty().get() + ", Timeouts= " + timeoutsProperty().get() + ", Flags= " + flagsProperty().get() + ", Pinging= " + isIsBeingPinged());
+    }
+
 }

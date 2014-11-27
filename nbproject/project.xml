@@ -16,6 +16,7 @@
             <name>ServMonFx</name>
             <explicit-platform explicit-source-supported="true"/>
             <source-roots>
+                <root id="src.lib.dir"/>
                 <root id="src.dir"/>
             </source-roots>
             <test-roots>
@@ -25,5 +26,21 @@
         <libraries xmlns="http://www.netbeans.org/ns/ant-project-libraries/1">
             <definitions>./lib/nblibraries.properties</definitions>
         </libraries>
+        <spellchecker-wordlist xmlns="http://www.netbeans.org/ns/spellchecker-wordlist/1">
+            <word>fxml</word>
+            <word>int</word>
+            <word>Linux</word>
+            <word>looper's</word>
+            <word>ms</word>
+            <word>pinged</word>
+            <word>pingers</word>
+            <word>pings</word>
+            <word>section's</word>
+            <word>sh</word>
+            <word>tab's</word>
+            <word>Target's</word>
+            <word>toolbar</word>
+            <word>validator</word>
+        </spellchecker-wordlist>
     </configuration>
 </project>

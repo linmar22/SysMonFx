@@ -13,7 +13,13 @@ import java.util.concurrent.Callable;
 
 /**
  *
- * @author root
+ * @author Linas Martusevicius
+ * 
+ * The heart of this application, pings a target address using
+ * the local operating system's tools. 
+ * "ping -c 1 + host" for Linux and Mac. 
+ * "ping -n 1 + host" for Windows.
+ * 
  */
 public class Pinger implements Callable {
 
@@ -40,9 +46,15 @@ public class Pinger implements Callable {
         }
     }
 
+    /**
+     * Pings a target host using a Linux/Mac "/bin/sh -c ping -c 1 [host]" command,
+     * reads the result from input and error streams.
+     * @param host the host to be pinged
+     * @return the ping in ms, unless an error occurs. Otherwise - the error.
+     */
     public String pingLinux(String host) {
         try {
-            String strCommand = "ping -W 2 -c 1 " + host;
+            String strCommand = "ping -c 1 " + host;
 
             ProcessBuilder b = new ProcessBuilder("/bin/sh", "-c", strCommand);
             Process p = b.start();
@@ -89,10 +101,16 @@ public class Pinger implements Callable {
         }
     }
 
+    /**
+     * Pings a target host using a Windows "ping -n 1 [host]" command,
+     * reads the result from input and error streams.
+     * @param host the host to be pinged
+     * @return the ping in ms, unless an error occurs. Otherwise - the error.
+     */
     public String pingWindows(String host) {
         try {
 
-            ProcessBuilder b = new ProcessBuilder("ping", "-w", "2000", "-n", "1", host);
+            ProcessBuilder b = new ProcessBuilder("ping", "-n", "1", host);
             Process p = b.start();
             p.waitFor();
 
@@ -124,6 +142,9 @@ public class Pinger implements Callable {
         }
     }
 
+    /**
+     * @return an uppercase String representation of the local Operating System
+     */
     public String getOS() {
         return System.getProperty("os.name").toUpperCase();
     }

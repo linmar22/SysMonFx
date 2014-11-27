@@ -12,13 +12,14 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.stage.Popup;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 /**
  *
- * @author root
+ * @author Linas Martusevicius
+ * 
+ * The main entry point for this JavaFX application.
  */
 public class ServMonFx extends Application {
 
@@ -29,7 +30,7 @@ public class ServMonFx extends Application {
         scene.getStylesheets().add("View/MainViewFXML.css");
         stage.setScene(scene);
         stage.show();
-        
+
         stage.setMinHeight(600);
         stage.setMinWidth(800);
         stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
@@ -45,14 +46,14 @@ public class ServMonFx extends Application {
      */
     public static void main(String[] args) {
         System.setProperty("java.library.path", "lib/");
-        try{
-        Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
-        fieldSysPath.setAccessible(true);
-        fieldSysPath.set(null, null);
-        }catch(IllegalAccessException | NoSuchFieldException e){
+        try {
+            Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
+            fieldSysPath.setAccessible(true);
+            fieldSysPath.set(null, null);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
             e.printStackTrace();
         }
-        
+
         launch(args);
     }
 

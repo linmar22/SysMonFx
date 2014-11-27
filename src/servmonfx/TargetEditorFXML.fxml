@@ -8,7 +8,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="400.0" styleClass="mainFxmlClass" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8" fx:controller="Controller.TargetEditorFXMLController">
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="400.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller.TargetEditorFXMLController">
     <stylesheets>
         <URL value="@/View/targeteditorfxml.css" />
     </stylesheets>
@@ -64,9 +64,35 @@
                   <Button fx:id="targetEditor_cancelButton" mnemonicParsing="false" prefWidth="100.0" text="Cancel" />
                </children>
             </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="3">
+               <children>
+                  <Label fx:id="targetEditor_statusNameLabel" alignment="CENTER" text="Invalid Name!" wrapText="true">
+                     <padding>
+                        <Insets left="5.0" right="5.0" />
+                     </padding></Label>
+               </children>
+            </HBox>
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="8">
                <children>
-                  <Label fx:id="targetEditor_statusLabel" text="Invalid Name!" />
+                  <Label prefWidth="350.0" text="Target ID and either an IP address OR domain are required!" textAlignment="CENTER" wrapText="true" />
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="4">
+               <children>
+                  <Label fx:id="targetEditor_statusIPLabel" text="Invalid IP!">
+                     <padding>
+                        <Insets left="5.0" right="5.0" />
+                     </padding>
+                  </Label>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnSpan="2147483647" GridPane.rowIndex="5">
+               <children>
+                  <Label fx:id="targetEditor_statusDomainLabel" text="Invalid Domain!">
+                     <padding>
+                        <Insets left="5.0" right="5.0" />
+                     </padding>
+                  </Label>
                </children>
             </HBox>
          </children>
@@ -78,4 +104,7 @@
          </opaqueInsets>
       </GridPane>
    </children>
+   <padding>
+      <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+   </padding>
 </AnchorPane>

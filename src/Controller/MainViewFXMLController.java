@@ -7,16 +7,15 @@
 package Controller;
 
 import Model.Target;
+import Model.TargetList;
 import Util.LogUtil;
-import Util.Pinger;
+import Util.Looper;
 import Util.SysUtil;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javafx.application.Platform;
@@ -30,21 +29,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.chart.BarChart;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.PieChart;
-import javafx.scene.chart.XYChart;
-import javafx.scene.control.Button;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TitledPane;
+import javafx.scene.chart.*;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -61,7 +47,9 @@ import javafx.util.Callback;
 
 /**
  *
- * @author root
+ * @author Linas Martusevicius
+ *
+ * Main controller of the MainViewFXML.fxml.
  */
 public class MainViewFXMLController implements Initializable {
 
@@ -69,13 +57,15 @@ public class MainViewFXMLController implements Initializable {
     Runnable r;
     LogUtil logUtil;
     boolean globalPingerStatus = true;
+    TargetList tl;
+    ArrayList<Looper> looperList;
 
     SysUtil sysUtil;
     long lastLabelUpdate = 0;
     long lastCycleInterval = 0;
     int cycle = 0;
 
-    static ObservableList<Target> targets = FXCollections.observableArrayList();
+    static ObservableList<Target> targets;
     public List<Target> safeTargets;
 
     @FXML
@@ -178,9 +168,11 @@ public class MainViewFXMLController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         sysUtil = new SysUtil();
+        exec = Executors.newCachedThreadPool();
+        tl = TargetList.getInstance(exec);
+        targets = tl.getTargetList();
         initToolbar();
         initLogger();
-        createTargets();
         initTable();
         initChart();
         initSystemGraph();
@@ -189,9 +181,11 @@ public class MainViewFXMLController implements Initializable {
         startLabelUpdateCounter();
         beginPing();
         updatePingChart();
-
     }
 
+    /**
+     * Initializes the toolbar located in the Peers tab
+     */
     public void initToolbar() {
         Image playDark = new Image(getClass().getResourceAsStream("/images/play_dark.png"));
         Image playLight = new Image(getClass().getResourceAsStream("/images/play_light.png"));
@@ -236,15 +230,11 @@ public class MainViewFXMLController implements Initializable {
                 if (playImageView.getImage() == pauseLight) {
                     playImageView.setImage(playDark);
                     globalPingerStatus = false;
-                    if (!exec.isShutdown()) {
-                        updateLabel(toolbar_statusLabel, "Finishing cycle");
-                        colorLabel(toolbar_statusLabel, Color.ORANGE);
-                        exec.shutdown();
-                    }
+                    pausePing();
                 } else {
                     playImageView.setImage(pauseDark);
-                    globalPingerStatus = true;
-                    beginPing();
+                    tl.setIsPaused(false);
+                    resumePing();
                 }
 
             }
@@ -285,16 +275,30 @@ public class MainViewFXMLController implements Initializable {
         toolbar_removePeersButton.addEventHandler(MouseEvent.MOUSE_RELEASED, new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent e) {
+                ObservableList<Target> selectedList = target_table.getSelectionModel().getSelectedItems();
                 if (removePeersImageView.getImage() == xLight) {
                     removePeersImageView.setImage(xDark);
                 } else {
                     removePeersImageView.setImage(xLight);
+                }
+                if (selectedList.size() > 0) {
+                    for (Target ts : selectedList) {
+                        for (Target tl : targets) {
+                            if (ts.nameProperty().get().equals(tl.nameProperty().get())) {
+                                targets.remove(tl);
+                            }
+                        }
+                    }
                 }
 
             }
         });
     }
 
+    /**
+     * Creates a new stage with the TargetEditorFXML.fxml layout and displays it
+     * for the user.
+     */
     public void showTargetEditor() {
         final Stage dialog = new Stage();
         try {
@@ -311,123 +315,23 @@ public class MainViewFXMLController implements Initializable {
         }
     }
 
-    public static void createTargets() {
-        Target t1 = new Target("PENDING", "Serveriai.lt", null, "79.98.29.20", null, 0, "A", 0, false);
-        Target t2 = new Target("PENDING", "Delfi", "www.delfi.lt", null, null, 0, "A", 0, false);
-        Target t3 = new Target("PENDING", "Google.org", "www.google.org", null, null, 0, "A", 0, false);
-        Target t4 = new Target("PENDING", "Local peer", null, "192.168.1.140", null, 0, "A", 0, false);
-        Target t5 = new Target("PENDING", "Amazon.co.uk", "www.amazon.co.uk", null, null, 0, "A", 0, false);
-        Target t6 = new Target("PENDING", "NASA", "www.nasa.gov", null, null, 0, "A", 0, false);
-        Target t7 = new Target("PENDING", "BBC", "www.bbc.co.uk", null, null, 0, "A", 0, false);
-        Target t8 = new Target("PENDING", "FakeWebsite.com", "www.longfakewebsitename.com", "123.456.789.245", null, 0, "A", 0, false);
-        Target t9 = new Target("PENDING", "Linux Mint", "www.linuxmint.com", null, null, 0, "A", 0, false);
-        Target t0 = new Target("PENDING", "Facebook", "www.facebook.com", null, null, 0, "A", 0, false);
-        Target t10 = new Target("PENDING", "Youtube", "www.youtube.com", null, null, 0, "A", 0, false);
-        Target t11 = new Target("PENDING", "W3Schools", "www.w3schools.com", null, null, 0, "A", 0, false);
-        Target t12 = new Target("PENDING", "Docs.Oracle", "docs.oracle.com", null, null, 0, "A", 0, false);
-        Target t13 = new Target("PENDING", "StackOverflow", "stackoverflow.com", null, null, 0, "A", 0, false);
-        Target t14 = new Target("PENDING", "ClassicRock.fm", null, "5.20.233.18", null, 0, "A", 0, false);
-        Target t15 = new Target("PENDING", "GMail", "mail.google.com", null, null, 0, "A", 0, false);
-        Target t16 = new Target("PENDING", "Mail.com", "www.mail.com", null, null, 0, "A", 0, false);
-        Target t17 = new Target("PENDING", "Tutorialspoint", "www.tutorialspoint.com", null, null, 0, "A", 0, false);
-        Target t18 = new Target("PENDING", "Swedbank.lt", "www.swedbank.lt", null, null, 0, "A", 0, false);
-        Target t19 = new Target("PENDING", "localhost", null, "127.0.0.1", null, 0, "AM", 0, false);
-        Target t20 = new Target("PENDING", "Simulated UNREACHABLE", null, "192.168.2.123", null, 0, "A", 0, false);
-        Target t21 = new Target("PENDING", "Australia DNS", "ns1.telstra.net", "139.130.4.5", null, 0, "A", 0, false);
-        Target t22 = new Target("PENDING", "Google DNS 1", "google-public-dns-a.google.com.", "8.8.8.8", null, 0, "A", 0, false);
-        Target t23 = new Target("PENDING", "Google DNS 2", "google-public-dns-b.google.com.", "8.8.4.4", null, 0, "A", 0, false);
-        Target t24 = new Target("PENDING", "LjreMC", "www.lejremc.dk", null, null, 0, "A", 0, false);
-
-        targets.add(t1);
-        targets.add(t2);
-        targets.add(t3);
-        targets.add(t4);
-        targets.add(t5);
-        targets.add(t6);
-        targets.add(t7);
-        targets.add(t8);
-        targets.add(t9);
-        targets.add(t0);
-        targets.add(t10);
-        targets.add(t11);
-        targets.add(t12);
-        targets.add(t13);
-        targets.add(t14);
-        targets.add(t15);
-        targets.add(t16);
-        targets.add(t17);
-        targets.add(t18);
-        targets.add(t19);
-        targets.add(t20);
-        targets.add(t21);
-        targets.add(t22);
-        targets.add(t23);
-        targets.add(t24);
-
-    }
-
+    /**
+     * Begins the pinging loop.
+     */
     public void beginPing() {
-        safeTargets = new ArrayList<>();
-        for (Target t : targets) {
-            safeTargets.add(t);
+        looperList = tl.getLooperList();
+        for (int i = 0; i < 8; i++) {
+            looperList.add(new Looper(i, targets, tl, logUtil));
         }
-        safeTargets = Collections.synchronizedList(targets);
 
-        exec = Executors.newCachedThreadPool();
-
-        for (int i = 0; i < 4; i++) {
-            exec.execute(new Runnable() {
-                @Override
-                public void run() {
-                    while (true) {
-                        for (Target t : safeTargets) {
-                            String ping = null;
-                            if (t.isActive() && !t.isIsBeingPinged()) {
-                                t.setIsBeingPinged(true);
-                                t.setPinged(t.getPinged() + 1);
-                                t.setStatus("PINGING");
-                                try {
-                                    Callable c = new Pinger(t);
-                                    ping = c.call().toString();
-                                    switch (ping) {
-                                        case "TIME_OUT":
-                                            t.setStatus("TIME OUT");
-                                            t.setLastrtt("TIME_OUT");
-                                            t.setTimeouts(t.timeoutsProperty().get() + 1);
-                                            logUtil.log(LogUtil.INFO, t.nameProperty().get() + " - timed out!");
-                                            t.setIsBeingPinged(false);
-                                            break;
-                                        case "UNKNOWN_HOST":
-                                            t.setStatus("ERROR");
-                                            t.setLastrtt("UNKNOWN HOST");
-                                            logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - unknown host!");
-                                            t.setIsBeingPinged(false);
-                                            break;
-                                        case "UNREACHABLE":
-                                            t.setStatus("ERROR");
-                                            t.setLastrtt("UNREACHABLE HOST");
-                                            logUtil.log(LogUtil.WARNING, t.nameProperty().get() + " - is unreachable!");
-                                            t.setIsBeingPinged(false);
-                                            break;
-                                        default:
-                                            t.setLastrtt(ping);
-                                            t.setStatus("ACTIVE");
-                                            t.setIsBeingPinged(false);
-                                            break;
-                                    }
-                                    System.out.println("C=" + t.getPinged() + " - " + t.nameProperty().get());
-                                } catch (Exception e) {
-                                    logUtil.log(LogUtil.CRITICAL, e.getMessage() + ", " + e.getCause());
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+        for (Looper looper : looperList) {
+            exec.execute(looper);
         }
     }
 
+    /**
+     * Initializes the peer chart in the Graph tab.
+     */
     public void initChart() {
         lineChart.setCreateSymbols(false);
         timeAxis.setLowerBound(00.00);
@@ -442,6 +346,9 @@ public class MainViewFXMLController implements Initializable {
         }
     }
 
+    /**
+     * Initializes the cycle chart in the Overview tab's monitoring segment.
+     */
     public void initCycleChart() {
         monitoringTitledPane.setExpanded(true);
         infoPane.prefWidthProperty().bind(monitoringTitledPane.widthProperty().subtract(monitoringTitledPane.widthProperty()).add(260.00));
@@ -459,13 +366,25 @@ public class MainViewFXMLController implements Initializable {
         cycleChart.getData().add(cycleSeries);
     }
 
+    /**
+     * Ranges the chart in accordance to the number of cycles done by the pinger
+     * loop.
+     *
+     * @param i int representation of the current cycle.
+     */
     public void rangeChart(int i) {
         if (i >= timeAxis.getUpperBound()) {
             timeAxis.setLowerBound(timeAxis.getLowerBound() + 20);
             timeAxis.setUpperBound(timeAxis.getUpperBound() + 20);
         }
+
     }
 
+    /**
+     * Initializes the peer table in the Peers tab. Binds the width properties
+     * of the columns to the size of the window. Binds their values to the peer
+     * list. Sets a custom cell factory for the status column.
+     */
     public void initTable() {
 
         TableColumn statusCol = new TableColumn();
@@ -554,6 +473,10 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Sets right-click listeners and their actions on the peer table in the
+     * Peers tab.
+     */
     public void setTableListeners() {
         target_table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -625,6 +548,13 @@ public class MainViewFXMLController implements Initializable {
         target_table.setContextMenu(rightClickMenu);
     }
 
+    /**
+     * Adds a given data point to the peer chart in the Graph tab.
+     *
+     * @param s the XYChart.Series object to add to.
+     * @param pos the position on the chart (X coordinate)
+     * @param value the value of the data (Y coordinate)
+     */
     public synchronized void addToChart(XYChart.Series s, int pos, Double value) {
         Platform.runLater(new Runnable() {
             @Override
@@ -634,6 +564,11 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Removes a series from the ping chart in the Graph tab.
+     *
+     * @param s XYChart.Series object to be removed.
+     */
     public synchronized void removeSeries(XYChart.Series s) {
         Platform.runLater(new Runnable() {
             @Override
@@ -643,6 +578,10 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Initializes the local system load monitoring charts in the Overview tab's
+     * System segment.
+     */
     public void initSystemGraph() {
         cpu_graph.setCategoryGap(50);
         cpu_graph.setBarGap(0);
@@ -760,6 +699,13 @@ public class MainViewFXMLController implements Initializable {
         }).start();
     }
 
+    /**
+     * Sets a label to the desired color. Reusable method to deal with updating
+     * elements on JavaFX's UI thread.
+     *
+     * @param l the Label object
+     * @param c the color
+     */
     public void colorLabel(Label l, Color c) {
         Platform.runLater(new Runnable() {
             @Override
@@ -769,6 +715,13 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Sets a label's text value. Reusable method to deal with updating elements
+     * on JavaFX's UI thread.
+     *
+     * @param l the Label object
+     * @param s the String value
+     */
     public void updateLabel(Label l, String s) {
         Platform.runLater(new Runnable() {
             @Override
@@ -778,6 +731,13 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Sets a PieChart's label's text value. Reusable method to deal with
+     * updating elements on JavaFX's UI thread.
+     *
+     * @param d the PieChart.Data object
+     * @param s the String value
+     */
     public void updatePieLabel(PieChart.Data d, String s) {
         Platform.runLater(new Runnable() {
             @Override
@@ -787,6 +747,10 @@ public class MainViewFXMLController implements Initializable {
         });
     }
 
+    /**
+     * Updates the general information panel in the Overview tab's Monitoring
+     * section's left hand side.
+     */
     public void updateInfo() {
         int total = targets.size();
         int timeouts = 0;
@@ -839,6 +803,11 @@ public class MainViewFXMLController implements Initializable {
         setLastLabelUpdate();
     }
 
+    /**
+     * A counter used to continuously update the cycle chart and general
+     * information in the Overview tab's Monitoring section with a one second
+     * delay.
+     */
     public void startLabelUpdateCounter() {
         new Thread(new Runnable() {
             @Override
@@ -859,10 +828,16 @@ public class MainViewFXMLController implements Initializable {
         }).start();
     }
 
+    /**
+     * Sets the lastLabelUpdate value to the current system time.
+     */
     public void setLastLabelUpdate() {
         lastLabelUpdate = System.currentTimeMillis();
     }
 
+    /**
+     * Initializes the custom logger and Output section of the Overview tab.
+     */
     public void initLogger() {
         logUtil = new LogUtil(output_console);
 
@@ -891,6 +866,9 @@ public class MainViewFXMLController implements Initializable {
 
     }
 
+    /**
+     * Continuously updates the ping chart every second.
+     */
     public void updatePingChart() {
         exec.execute(new Runnable() {
 
@@ -943,6 +921,27 @@ public class MainViewFXMLController implements Initializable {
 
     public void setGlobalPingerStatus(boolean globalPingerStatus) {
         this.globalPingerStatus = globalPingerStatus;
+    }
+
+    /**
+     * Pauses the pingers.
+     */
+    public void pausePing() {
+        globalPingerStatus = false;
+        for (Looper l : looperList) {
+            l.suspend();
+        }
+
+    }
+
+    /**
+     * Resumes the pingers
+     */
+    public void resumePing() {
+        globalPingerStatus = true;
+        for (Looper l : looperList) {
+            l.resume();
+        }
     }
 
 }
