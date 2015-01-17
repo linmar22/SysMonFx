@@ -14,12 +14,11 @@ import java.util.concurrent.Callable;
 /**
  *
  * @author Linas Martusevicius
- * 
- * The heart of this application, pings a target address using
- * the local operating system's tools. 
- * "ping -c 1 + host" for Linux and Mac. 
- * "ping -n 1 + host" for Windows.
- * 
+ *
+ * The heart of this application, pings a target address using the local
+ * operating system's tools. "ping -c 1 + host" for Linux and Mac. "ping -n 1 +
+ * host" for Windows.
+ *
  */
 public class Pinger implements Callable {
 
@@ -47,8 +46,9 @@ public class Pinger implements Callable {
     }
 
     /**
-     * Pings a target host using a Linux/Mac "/bin/sh -c ping -c 1 [host]" command,
-     * reads the result from input and error streams.
+     * Pings a target host using a Linux/Mac "/bin/sh -c ping -c 1 [host]"
+     * command, reads the result from input and error streams.
+     *
      * @param host the host to be pinged
      * @return the ping in ms, unless an error occurs. Otherwise - the error.
      */
@@ -74,7 +74,7 @@ public class Pinger implements Callable {
                     output = output.split("/")[4];
                     //System.out.println("OUTSTRMLINUX = PING = "+output);
                 }
-                if (output.contains("100% packet loss")|output.contains("100.0% packet loss")) {
+                if (output.contains("100% packet loss") | output.contains("100.0% packet loss")) {
                     //System.out.println("OUTSTRMLINUX = TIME_OUT..."+'\n'+output);
                     output = "TIME_OUT";
                 }
@@ -102,8 +102,9 @@ public class Pinger implements Callable {
     }
 
     /**
-     * Pings a target host using a Windows "ping -n 1 [host]" command,
-     * reads the result from input and error streams.
+     * Pings a target host using a Windows "ping -n 1 [host]" command, reads the
+     * result from input and error streams.
+     *
      * @param host the host to be pinged
      * @return the ping in ms, unless an error occurs. Otherwise - the error.
      */
@@ -118,9 +119,11 @@ public class Pinger implements Callable {
 
             String line = "";
             String output = "";
-
+            
+            
             while ((line = br.readLine()) != null) {
                 output = line + '\n';
+                
                 if (output.contains("Average")) {
                     output = output.split(",")[2].split(" = ")[1].split("ms")[0];
                 }
@@ -132,12 +135,12 @@ public class Pinger implements Callable {
                 }
                 if (output.contains("unreachable")) {
                     output = "UNREACHABLE";
+                    break;
                 }
             }
             return output;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-
             return null;
         }
     }
